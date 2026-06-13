@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+
+# Windows
+*:Zone.Identifier
+
+# Modèles entraînés (volumineux, regénérés via train.py)
+ml/models/*.pkl
+
+# MLflow database et tracking
+ml/artifacts/mlflow.db
+ml/artifacts/mlruns/
+mlruns/
+
+# Jupyter checkpoints
+.ipynb_checkpoints/
+
+# Dataset généré (regénéré via generate_dataset.py)
+ml/data/processed/healthai_dataset.csv
+
+# Artifacts plots (trackés pour le site de documentation)
+
+# Environnement
+.env
+*.env
+
+# IDE
+.vscode/
+.idea/
