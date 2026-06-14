@@ -200,6 +200,7 @@
 
     <li class="section-title">API & Déploiement</li>
     <li><a href="#api">API FastAPI</a></li>
+    <li><a href="#bdd">Intégration BDD ETL</a></li>
 
     <li class="section-title">Soutenance</li>
     <li><a href="#jury">Questions du jury</a></li>
@@ -220,6 +221,7 @@
       <span class="badge">XGBoost ★</span>
       <span class="badge">FastAPI</span>
       <span class="badge">MLflow</span>
+      <span class="badge">PostgreSQL ETL</span>
       <span class="badge">F1-macro 86.1%</span>
       <span class="badge">AUC-ROC 94.5%</span>
     </div>
@@ -384,6 +386,12 @@
       <div class="pipe-node">Meilleur modèle<br><small>XGBoost</small></div>
       <div class="pipe-arrow">→</div>
       <div class="pipe-node">API FastAPI<br><small>/recommend</small></div>
+    </div>
+    <div class="alert alert-info" style="margin-top:16px">
+      <strong>Intégration BDD ETL :</strong> au moment de la réponse, l'API interroge en temps réel
+      la base de données PostgreSQL du projet ETL HealthIA (2736 exercices, 587 aliments).
+      Le profil ML prédit sert de filtre — difficulté, groupes musculaires, macros — pour retourner
+      des exercices et des repas <em>réels</em> adaptés à l'utilisateur, pas des textes codés en dur.
     </div>
   </section>
 
@@ -1485,7 +1493,15 @@ prise_masse_debutant       0.94      1.00      0.97        59
     "sessions_per_week": 3,
     "session_duration_min": 40,
     "focus": "Cardio modéré + renforcement léger",
-    "activities": ["Marche rapide ou vélo 20 min (zone 2)", ...],
+    "activities": [
+      "Jumping Jacks (Abdominals — Cardio)",
+      "Butt Kicks (Quadriceps — Cardio)",
+      "Box Jump (Glutes — Plyometrics)"
+    ],
+    "nutrition_examples": [
+      "Grilled Chicken Salad (lunch) — 350 kcal | P:30g G:10g L:20g",
+      "Greek Yogurt (breakfast) — 100 kcal | P:17g G:6g L:0g"
+    ],
     "intensity": "Modérée — 55-65% FCmax",
     "weekly_volume_h": 2.0,
     "progression": "Ajouter 5 min de cardio chaque semaine...",
@@ -1502,6 +1518,72 @@ prise_masse_debutant       0.94      1.00      0.97        59
         le modèle depuis le fichier <code>model.pkl</code>. Toutes les requêtes suivantes
         réutilisent la même instance en mémoire. Charger un modèle joblib prend ~200ms.
         Sans Singleton, chaque appel API serait 200ms plus lent — inacceptable en production.
+      </p>
+    </div>
+  </section>
+
+  <!-- BDD ETL -->
+  <section id="bdd">
+    <h2>Intégration BDD ETL HealthIA</h2>
+    <p>
+      Le projet s'appuie sur une base de données PostgreSQL peuplée par un pipeline ETL
+      séparé (<a href="https://github.com/Enysssss/ETL-HealthIA" target="_blank">ETL-HealthIA</a>).
+      Ce couplage permet de sortir des recommandations statiques codées en dur pour proposer
+      des exercices et des repas <strong>réels et dynamiques</strong>, sélectionnés en temps réel
+      selon le profil prédit par le modèle ML.
+    </p>
+
+    <div class="card-grid">
+      <div class="metric-card">
+        <div class="val">2736</div><div class="lbl">exercices en BDD</div>
+      </div>
+      <div class="metric-card">
+        <div class="val">587</div><div class="lbl">aliments en BDD</div>
+      </div>
+      <div class="metric-card">
+        <div class="val">3</div><div class="lbl">niveaux de difficulté</div>
+      </div>
+      <div class="metric-card">
+        <div class="val">7</div><div class="lbl">catégories d'exercices</div>
+      </div>
+    </div>
+
+    <h3>Comment le mapping fonctionne</h3>
+    <p>
+      Chaque profil ML est associé à un ensemble de filtres SQL. Quand le modèle prédit
+      <code>prise_masse_confirme</code>, l'API interroge la BDD avec les contraintes correspondantes :
+    </p>
+
+    <table>
+      <tr><th>Profil ML</th><th>difficulty</th><th>Catégories exercices</th><th>Filtre nutrition</th></tr>
+      <tr><td>prise_masse_confirme</td><td>avance</td><td>Strength, Powerlifting, Olympic Weightlifting</td><td>Protéines ≥ 25g</td></tr>
+      <tr><td>prise_masse_debutant</td><td>debutant</td><td>Strength</td><td>Protéines ≥ 20g</td></tr>
+      <tr><td>perte_poids_confirme</td><td>avance</td><td>Cardio, Plyometrics, Strength</td><td>Calories ≤ 400 kcal</td></tr>
+      <tr><td>perte_poids_debutant</td><td>debutant</td><td>Cardio, Stretching</td><td>Calories ≤ 350 kcal</td></tr>
+      <tr><td>amelioration_cardio</td><td>intermediaire</td><td>Cardio, Plyometrics</td><td>Glucides ≥ 30g</td></tr>
+      <tr><td>maintien_bien_etre</td><td>debutant</td><td>Stretching, Cardio, Strength</td><td>Protéines ↑ (équilibré)</td></tr>
+    </table>
+
+    <div class="card">
+      <h4>Pourquoi ORDER BY RANDOM() ?</h4>
+      <p>
+        Les exercices et aliments retournés sont tirés aléatoirement parmi ceux qui correspondent
+        aux filtres (<code>ORDER BY RANDOM() LIMIT 6</code> pour les exercices,
+        <code>LIMIT 5</code> pour les aliments). Cela garantit que deux appels identiques
+        ne donnent pas exactement le même programme — ce qui reflète la réalité d'un coach
+        qui varie les séances semaine après semaine.
+      </p>
+    </div>
+
+    <div class="card">
+      <h4>Séparation des responsabilités ML ↔ BDD</h4>
+      <p>
+        Le modèle ML ne connaît pas la BDD et la BDD ne connaît pas le modèle.
+        Le ML prédit uniquement un <em>label</em> (ex: <code>prise_masse_confirme</code>).
+        Le moteur de recommandation (<code>engine.py</code>) traduit ce label en requêtes SQL.
+        Cette séparation permet de changer l'un sans toucher à l'autre :
+        on peut mettre à jour la BDD avec de nouveaux exercices sans ré-entraîner le modèle,
+        et on peut améliorer le modèle sans changer la logique de recommandation.
       </p>
     </div>
   </section>
@@ -1584,6 +1666,15 @@ prise_masse_debutant       0.94      1.00      0.97        59
       <div class="qa-a">
         <p>MLflow est un système de tracking d'expériences ML. À chaque run d'entraînement, il enregistre automatiquement les hyperparamètres, toutes les métriques, les artefacts (courbes, matrices) et le modèle sérialisé.</p>
         <p>L'intérêt concret : reproductibilité totale. Si dans 3 mois on se demande "quels paramètres ont donné le meilleur résultat ?", MLflow répond instantanément. On peut aussi comparer graphiquement tous les runs dans l'interface web (<code>mlflow ui</code>). C'est une pratique MLOps standard en entreprise.</p>
+      </div>
+    </div>
+
+    <div class="qa-item">
+      <div class="qa-q">Pourquoi connecter l'API à une base de données externe ? Le ML ne suffit pas ?</div>
+      <div class="qa-a">
+        <p>Le modèle ML fait une chose très bien : prédire un profil parmi 6. Mais "prise_masse_confirme" n'est pas un programme sportif — c'est une étiquette. Traduire cette étiquette en exercices concrets et en repas adaptés, c'est un problème différent.</p>
+        <p>On aurait pu coder 6 programmes statiques en dur dans le code — c'est d'ailleurs ce qu'on faisait avant. Le problème : le contenu est figé, impossible à mettre à jour sans modifier le code. En branchant l'API sur la BDD ETL HealthIA (2736 exercices, 587 aliments), le contenu devient vivant : on peut ajouter de nouveaux exercices, corriger des données nutritionnelles, sans toucher au modèle ML.</p>
+        <p>C'est aussi une démonstration de l'intégration des deux projets du module : l'ETL qui alimente la BDD, et le ML qui l'exploite.</p>
       </div>
     </div>
 

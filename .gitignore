@@ -1,31 +1,24 @@
-# Python
-__pycache__/
-*.py[cod]
-*.pyo
+# Environnement virtuel
 .venv/
 
-# Windows
-*:Zone.Identifier
+# Variables d'environnement (contient les credentials)
+.env
 
-# Modèles entraînés (volumineux, regénérés via train.py)
+# Modèles entraines
 ml/models/*.pkl
 
-# MLflow database et tracking
-ml/artifacts/mlflow.db
-ml/artifacts/mlruns/
+# Donnees generees
+ml/data/processed/
+
+# MLflow
 mlruns/
+mlartifacts/
 
-# Jupyter checkpoints
-.ipynb_checkpoints/
-
-# Dataset généré (regénéré via generate_dataset.py)
-ml/data/processed/healthai_dataset.csv
-
-# Artifacts plots (trackés pour le site de documentation)
-
-# Environnement
-.env
-*.env
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
 
 # IDE
 .vscode/

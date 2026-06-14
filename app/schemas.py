@@ -36,6 +36,7 @@ class ProgramOutput(BaseModel):
     session_duration_min: int
     focus: str
     activities: list[str]
+    nutrition_examples: list[str]
     intensity: str
     weekly_volume_h: float
     progression: str

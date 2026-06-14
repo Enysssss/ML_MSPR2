@@ -28,13 +28,13 @@ def recommend(data: RecommendInput) -> RecommendOutput:
 @app.get("/profiles")
 def list_profiles():
     """Liste les profils fitness disponibles."""
-    from ml.src.recommendation_engine.engine import list_profiles, _PROGRAMS
+    from ml.src.recommendation_engine.engine import list_profiles, _PROFILE_CONFIG
     return {
         "profiles": [
             {
                 "id": p,
-                "focus": _PROGRAMS[p].focus,
-                "sessions_per_week": _PROGRAMS[p].sessions_per_week,
+                "focus": _PROFILE_CONFIG[p]["focus"],
+                "sessions_per_week": _PROFILE_CONFIG[p]["sessions_per_week"],
             }
             for p in list_profiles()
         ]
