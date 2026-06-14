@@ -78,7 +78,14 @@ class FitnessService:
         profile   = self._encoder.inverse_transform([encoded])[0]
         confidence = float(np.max(self._model.predict_proba(X)))
 
-        prog = get_program(profile)
+        try:
+            prog = get_program(profile)
+        except RuntimeError as e:
+            raise RuntimeError(
+                f"DATABASE_URL non configurée. "
+                f"Lancez : export DATABASE_URL=postgresql://... avant de démarrer l'API. "
+                f"Détail : {e}"
+            )
 
         return RecommendOutput(
             profile=profile,

@@ -53,7 +53,10 @@ python ml/src/training/train.py
 
 ### 4. Lancer l'API
 
+> ⚠️ La variable `DATABASE_URL` doit être exportée dans le même terminal avant de lancer uvicorn.
+
 ```bash
+export $(cat .env | xargs)
 uvicorn app.main:app --reload
 ```
 
