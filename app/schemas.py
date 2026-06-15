@@ -36,7 +36,6 @@ class ProgramOutput(BaseModel):
     session_duration_min: int
     focus: str
     activities: list[str]
-    nutrition_examples: list[str]
     intensity: str
     weekly_volume_h: float
     progression: str
@@ -52,7 +51,150 @@ class RecommendOutput(BaseModel):
     program: ProgramOutput
 
 
+# ---------------------------------------------------------------------------
+# Endpoint /nutrition/calories
+# ---------------------------------------------------------------------------
+
+VALID_PROFILES = [
+    "perte_poids_debutant",
+    "perte_poids_confirme",
+    "prise_masse_debutant",
+    "prise_masse_confirme",
+    "amelioration_cardio",
+    "maintien_bien_etre",
+]
+
+VALID_ALLERGENS = [
+    "gluten", "lactose", "oeufs", "fruits_a_coque",
+    "arachides", "soja", "poisson", "crustaces",
+]
+
+
+class CaloriesInput(BaseModel):
+    age: int = Field(..., ge=18, le=65, description="Âge en années")
+    gender: str = Field(..., pattern="^(male|female)$", description="'male' ou 'female'")
+    weight_kg: float = Field(..., gt=30, lt=200, description="Poids actuel (kg)")
+    height_cm: float = Field(..., gt=140, lt=215, description="Taille (cm)")
+    target_weight_kg: float = Field(..., gt=30, lt=200, description="Poids cible (kg)")
+    weeks_to_goal: int = Field(..., ge=1, le=104, description="Délai pour atteindre l'objectif (semaines)")
+    profile: str = Field(..., description="Profil fitness choisi parmi les 6 disponibles")
+
+    @model_validator(mode="after")
+    def check_profile(self):
+        if self.profile not in VALID_PROFILES:
+            raise ValueError(f"Profil invalide. Valeurs acceptées : {VALID_PROFILES}")
+        return self
+
+
+# ---------------------------------------------------------------------------
+# Endpoint /nutrition/meals
+# ---------------------------------------------------------------------------
+
+class MealItem(BaseModel):
+    name: str
+    meal_type: str
+    calories_kcal: float
+    proteins_g: float
+    carbs_g: float
+    fats_g: float
+    allergens: list[str]
+
+
+class MealsInput(BaseModel):
+    profile: str = Field(..., description="Un des 6 profils fitness")
+    allergens_to_exclude: list[str] = Field(
+        default=[],
+        description=f"Allergènes à exclure. Valeurs possibles : {VALID_ALLERGENS}",
+    )
+    meal_type: str | None = Field(
+        default=None,
+        description="Filtrer par type : breakfast, lunch, dinner, snack. Null = tous types.",
+    )
+
+    @model_validator(mode="after")
+    def validate_fields(self):
+        if self.profile not in VALID_PROFILES:
+            raise ValueError(f"Profil invalide. Valeurs acceptées : {VALID_PROFILES}")
+        unknown = [a for a in self.allergens_to_exclude if a not in VALID_ALLERGENS]
+        if unknown:
+            raise ValueError(f"Allergènes inconnus : {unknown}. Valeurs acceptées : {VALID_ALLERGENS}")
+        if self.meal_type and self.meal_type not in {"breakfast", "lunch", "dinner", "snack"}:
+            raise ValueError("meal_type doit être : breakfast, lunch, dinner ou snack")
+        return self
+
+
+class MealsOutput(BaseModel):
+    profile: str
+    allergens_excluded: list[str]
+    meal_type_filter: str | None
+    count: int
+    meals: list[MealItem]
+
+
+class CaloriesOutput(BaseModel):
+    bmr: float = Field(description="Métabolisme de base Harris-Benedict (kcal/j)")
+    tdee: float = Field(description="Dépense énergétique totale avec activité (kcal/j)")
+    daily_adjustment: float = Field(description="Déficit ou surplus journalier calculé (kcal/j)")
+    daily_calories_target: float = Field(description="Objectif calorique final (kcal/j)")
+    weekly_change_kg: float = Field(description="Variation de poids attendue par semaine (kg)")
+    total_change_kg: float = Field(description="Variation totale à réaliser (kg)")
+    goal_type: str = Field(description="'deficit' ou 'surplus'")
+    protein_target_g: float = Field(description="Apport protéique recommandé (g/j)")
+    note: str = Field(description="Conseil personnalisé selon le profil")
+
+
+# ---------------------------------------------------------------------------
+# Endpoint /sessions/exercises
+# ---------------------------------------------------------------------------
+
+class SessionExerciseItem(BaseModel):
+    order_num: int
+    exercise_name: str
+    body_part: str | None
+    category: str | None
+    equipment: str | None
+    sets: int | None
+    reps: str | None
+    rest_sec: int | None
+    notes: str | None
+
+
+class WorkoutSessionOutput(BaseModel):
+    session_id: int
+    name: str
+    profile: str
+    session_type: str | None
+    total_duration_min: int | None
+    difficulty: str | None
+    description: str | None
+    objective: str | None
+    exercises: list[SessionExerciseItem]
+
+
+class SessionInput(BaseModel):
+    profile: str = Field(..., description="Un des 6 profils fitness")
+    session_type: str | None = Field(
+        default=None,
+        description="Filtrer par type : push, pull, legs, full_body, hiit, cardio, stretching, mixed. Null = tous.",
+    )
+
+    @model_validator(mode="after")
+    def validate_profile(self):
+        if self.profile not in VALID_PROFILES:
+            raise ValueError(f"Profil invalide. Valeurs acceptées : {VALID_PROFILES}")
+        return self
+
+
+class SessionOutput(BaseModel):
+    profile: str
+    session_type_filter: str | None
+    count: int
+    sessions: list[WorkoutSessionOutput]
+
+
+# ---------------------------------------------------------------------------
 # Rétrocompatibilité avec l'ancien endpoint /nutrition/predict
+# ---------------------------------------------------------------------------
 class NutritionInput(BaseModel):
     age: int = Field(..., ge=18, le=65)
     poids_kg: float = Field(..., gt=20, lt=300)

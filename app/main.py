@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 
-from app.schemas import RecommendInput, RecommendOutput, NutritionInput, NutritionOutput
+from app.schemas import RecommendInput, RecommendOutput, NutritionInput, NutritionOutput, CaloriesInput, CaloriesOutput, MealsInput, MealsOutput, SessionInput, SessionOutput
 from app.service import FitnessService
 
 app = FastAPI(
@@ -39,6 +39,35 @@ def list_profiles():
             for p in list_profiles()
         ]
     }
+
+
+@app.post("/nutrition/meals", response_model=MealsOutput)
+def meals(data: MealsInput) -> MealsOutput:
+    """
+    Retourne 10 repas complets adaptés au profil fitness.
+    Filtre optionnel par allergènes et par type de repas (breakfast/lunch/dinner/snack).
+    """
+    return service.get_meals(data)
+
+
+@app.post("/nutrition/calories", response_model=CaloriesOutput)
+def calories(data: CaloriesInput) -> CaloriesOutput:
+    """
+    Calcule l'objectif calorique journalier via Harris-Benedict,
+    ajusté selon le poids cible, le délai souhaité et le profil fitness choisi.
+    Aucun ML — calcul nutritionnel pur.
+    """
+    return service.calculate_calories(data)
+
+
+@app.post("/sessions/exercises", response_model=SessionOutput)
+def session_exercises(data: SessionInput) -> SessionOutput:
+    """
+    Retourne les séances d'entraînement complètes pour un profil fitness.
+    Chaque séance contient la liste ordonnée des exercices avec sets/reps/repos.
+    Filtre optionnel par type de séance (push, pull, legs, full_body, hiit, cardio, etc.).
+    """
+    return service.get_sessions(data)
 
 
 # Rétrocompatibilité
