@@ -35,7 +35,6 @@ class ProgramOutput(BaseModel):
     sessions_per_week: int
     session_duration_min: int
     focus: str
-    activities: list[str]
     intensity: str
     weekly_volume_h: float
     progression: str
@@ -43,9 +42,16 @@ class ProgramOutput(BaseModel):
     objective: str
 
 
-class RecommendOutput(BaseModel):
+class ProfileScore(BaseModel):
     profile: str
     confidence: float
+
+
+class RecommendOutput(BaseModel):
+    prediction_id: str
+    profile: str
+    confidence: float
+    top_profiles: list[ProfileScore]
     bmi: float
     bmi_category: str
     program: ProgramOutput
@@ -171,23 +177,82 @@ class WorkoutSessionOutput(BaseModel):
     exercises: list[SessionExerciseItem]
 
 
+# ---------------------------------------------------------------------------
+# Endpoint /logs/feedback + /logs/comparison
+# ---------------------------------------------------------------------------
+
+class FeedbackInput(BaseModel):
+    prediction_id: str = Field(..., description="ID retourné par /recommend")
+    chosen_profile: str = Field(..., description="Profil finalement choisi par l'utilisateur")
+
+    @model_validator(mode="after")
+    def validate_chosen(self):
+        if self.chosen_profile not in VALID_PROFILES:
+            raise ValueError(f"Profil invalide. Valeurs acceptées : {VALID_PROFILES}")
+        return self
+
+
+class FeedbackOutput(BaseModel):
+    prediction_id: str
+    recommended_profile: str
+    chosen_profile: str
+    followed_recommendation: bool
+
+
+class ComparisonOutput(BaseModel):
+    total_with_feedback: int
+    followed_recommendation: int
+    follow_rate_pct: float
+    by_profile: dict
+
+
+VALID_BODY_REGIONS = [
+    "bras_droit", "bras_gauche", "bras",
+    "jambe_droite", "jambe_gauche", "jambes",
+    "dos", "epaules", "abdominaux", "pied", "nuque",
+]
+
+# Mapping région → valeurs body_part dans la table workout_exercises
+BODY_REGION_TO_PARTS: dict[str, list[str]] = {
+    "bras_droit":   ["Biceps", "Triceps", "Épaules", "Avant-bras"],
+    "bras_gauche":  ["Biceps", "Triceps", "Épaules", "Avant-bras"],
+    "bras":         ["Biceps", "Triceps", "Épaules", "Avant-bras"],
+    "jambe_droite": ["Quadriceps", "Ischio-jambiers", "Fessiers", "Mollets"],
+    "jambe_gauche": ["Quadriceps", "Ischio-jambiers", "Fessiers", "Mollets"],
+    "jambes":       ["Quadriceps", "Ischio-jambiers", "Fessiers", "Mollets"],
+    "dos":          ["Dos"],
+    "epaules":      ["Épaules"],
+    "abdominaux":   ["Abdominaux"],
+    "pied":         ["Mollets"],
+    "nuque":        ["Trapèzes"],
+}
+
+
 class SessionInput(BaseModel):
     profile: str = Field(..., description="Un des 6 profils fitness")
     session_type: str | None = Field(
         default=None,
         description="Filtrer par type : push, pull, legs, full_body, hiit, cardio, stretching, mixed. Null = tous.",
     )
+    body_parts_to_exclude: list[str] = Field(
+        default=[],
+        description=f"Zones corporelles à ne pas solliciter. Valeurs possibles : {VALID_BODY_REGIONS}",
+    )
 
     @model_validator(mode="after")
-    def validate_profile(self):
+    def validate_fields(self):
         if self.profile not in VALID_PROFILES:
             raise ValueError(f"Profil invalide. Valeurs acceptées : {VALID_PROFILES}")
+        unknown = [r for r in self.body_parts_to_exclude if r not in VALID_BODY_REGIONS]
+        if unknown:
+            raise ValueError(f"Régions inconnues : {unknown}. Valeurs acceptées : {VALID_BODY_REGIONS}")
         return self
 
 
 class SessionOutput(BaseModel):
     profile: str
     session_type_filter: str | None
+    body_parts_excluded: list[str]
     count: int
     sessions: list[WorkoutSessionOutput]
 

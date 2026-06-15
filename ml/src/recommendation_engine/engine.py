@@ -166,7 +166,6 @@ class Program:
     sessions_per_week: int
     session_duration_min: int
     focus: str
-    activities: list[str]
     intensity: str
     weekly_volume_h: float
     progression: str
@@ -180,16 +179,11 @@ def get_program(profile: str) -> Program:
 
     cfg = _PROFILE_CONFIG[profile]
 
-    with psycopg2.connect(DATABASE_URL, cursor_factory=psycopg2.extras.RealDictCursor) as conn:
-        with conn.cursor() as cur:
-            exercises = _get_exercises(cur, cfg["exercise_filters"])
-
     return Program(
         profile=profile,
         sessions_per_week=cfg["sessions_per_week"],
         session_duration_min=cfg["session_duration_min"],
         focus=cfg["focus"],
-        activities=exercises,
         intensity=cfg["intensity"],
         weekly_volume_h=cfg["weekly_volume_h"],
         progression=cfg["progression"],
@@ -207,7 +201,6 @@ def program_to_dict(program: Program) -> dict:
         "sessions_per_week":    program.sessions_per_week,
         "session_duration_min": program.session_duration_min,
         "focus":                program.focus,
-        "activities":           program.activities,
         "intensity":            program.intensity,
         "weekly_volume_h":      program.weekly_volume_h,
         "progression":          program.progression,

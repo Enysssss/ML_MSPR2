@@ -1,12 +1,13 @@
 import joblib
 import numpy as np
 import pandas as pd
+import uuid
 from pathlib import Path
 
-from app.schemas import RecommendInput, RecommendOutput, ProgramOutput
+from app.schemas import RecommendInput, RecommendOutput, ProgramOutput, ProfileScore
 from app.schemas import NutritionInput, NutritionOutput
 from app.schemas import CaloriesInput, CaloriesOutput, MealsInput, MealsOutput, MealItem
-from app.schemas import SessionInput, SessionOutput, WorkoutSessionOutput, SessionExerciseItem
+from app.schemas import SessionInput, SessionOutput, WorkoutSessionOutput, SessionExerciseItem, BODY_REGION_TO_PARTS
 
 ROOT = Path(__file__).parent.parent
 MODELS_DIR = ROOT / "ml" / "models"
@@ -76,9 +77,19 @@ class FitnessService:
         row = engineer(row)
         X = row[get_feature_names()]
 
-        encoded   = self._model.predict(X)[0]
-        profile   = self._encoder.inverse_transform([encoded])[0]
-        confidence = float(np.max(self._model.predict_proba(X)))
+        probas = self._model.predict_proba(X)[0]
+        top3_idx = np.argsort(probas)[::-1][:3]
+        top_profiles = [
+            ProfileScore(
+                profile=self._encoder.inverse_transform([i])[0],
+                confidence=round(float(probas[i]), 4),
+            )
+            for i in top3_idx
+        ]
+
+        encoded    = self._model.predict(X)[0]
+        profile    = self._encoder.inverse_transform([encoded])[0]
+        confidence = float(probas[top3_idx[0]])
 
         try:
             prog = get_program(profile)
@@ -89,9 +100,25 @@ class FitnessService:
                 f"Détail : {e}"
             )
 
+        prediction_id = str(uuid.uuid4())
+
+        # Log Firebase (silencieux si Firebase non configuré)
+        try:
+            from app.firebase import log_prediction
+            log_prediction(prediction_id, profile, round(confidence, 4), {
+                "age": data.age, "gender": data.gender,
+                "weight_kg": data.weight_kg, "height_cm": data.height_cm,
+                "body_fat_pct": data.body_fat_pct, "resting_bpm": data.resting_bpm,
+                "experience_level": data.experience_level,
+            })
+        except Exception:
+            pass
+
         return RecommendOutput(
+            prediction_id=prediction_id,
             profile=profile,
             confidence=round(confidence, 4),
+            top_profiles=top_profiles,
             bmi=round(bmi, 2),
             bmi_category=_bmi_category(bmi),
             program=ProgramOutput(**program_to_dict(prog)),
@@ -225,6 +252,11 @@ class FitnessService:
         if not db_url:
             raise RuntimeError("DATABASE_URL non configurée.")
 
+        # Construire la liste des body_parts à exclure depuis les régions
+        excluded_parts: set[str] = set()
+        for region in data.body_parts_to_exclude:
+            excluded_parts.update(BODY_REGION_TO_PARTS.get(region, []))
+
         conditions = ["ws.profile = %s"]
         params: list = [data.profile]
 
@@ -236,7 +268,6 @@ class FitnessService:
 
         with psycopg2.connect(db_url, cursor_factory=psycopg2.extras.RealDictCursor) as conn:
             with conn.cursor() as cur:
-                # Récupérer les sessions
                 cur.execute(
                     f"""
                     SELECT id, name, profile, session_type, total_duration_min,
@@ -251,18 +282,31 @@ class FitnessService:
 
                 sessions = []
                 for s in sessions_rows:
-                    # Récupérer les exercices liés dans l'ordre
-                    cur.execute(
+                    # Exclure les exercices qui sollicitent les zones blessées
+                    if excluded_parts:
+                        exclude_list = list(excluded_parts)
+                        ex_params = (s["id"], exclude_list)
+                        ex_sql = """
+                            SELECT se.order_num, se.sets, se.reps, se.rest_sec, se.notes,
+                                   we.name AS exercise_name, we.body_part, we.category, we.equipment
+                            FROM session_exercises se
+                            JOIN workout_exercises we ON we.id = se.exercise_id
+                            WHERE se.session_id = %s
+                              AND (we.body_part IS NULL OR we.body_part != ALL(%s::text[]))
+                            ORDER BY se.order_num
                         """
-                        SELECT se.order_num, se.sets, se.reps, se.rest_sec, se.notes,
-                               we.name AS exercise_name, we.body_part, we.category, we.equipment
-                        FROM session_exercises se
-                        JOIN workout_exercises we ON we.id = se.exercise_id
-                        WHERE se.session_id = %s
-                        ORDER BY se.order_num
-                        """,
-                        (s["id"],),
-                    )
+                    else:
+                        ex_params = (s["id"],)
+                        ex_sql = """
+                            SELECT se.order_num, se.sets, se.reps, se.rest_sec, se.notes,
+                                   we.name AS exercise_name, we.body_part, we.category, we.equipment
+                            FROM session_exercises se
+                            JOIN workout_exercises we ON we.id = se.exercise_id
+                            WHERE se.session_id = %s
+                            ORDER BY se.order_num
+                        """
+
+                    cur.execute(ex_sql, ex_params)
                     ex_rows = cur.fetchall()
 
                     exercises = [
@@ -297,6 +341,7 @@ class FitnessService:
         return SessionOutput(
             profile=data.profile,
             session_type_filter=data.session_type,
+            body_parts_excluded=data.body_parts_to_exclude,
             count=len(sessions),
             sessions=sessions,
         )

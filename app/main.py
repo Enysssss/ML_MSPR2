@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 
-from app.schemas import RecommendInput, RecommendOutput, NutritionInput, NutritionOutput, CaloriesInput, CaloriesOutput, MealsInput, MealsOutput, SessionInput, SessionOutput
+from app.schemas import RecommendInput, RecommendOutput, CaloriesInput, CaloriesOutput, MealsInput, MealsOutput, SessionInput, SessionOutput, FeedbackInput, FeedbackOutput, ComparisonOutput
 from app.service import FitnessService
 
 app = FastAPI(
@@ -60,6 +60,34 @@ def calories(data: CaloriesInput) -> CaloriesOutput:
     return service.calculate_calories(data)
 
 
+@app.post("/logs/feedback", response_model=FeedbackOutput)
+def feedback(data: FeedbackInput) -> FeedbackOutput:
+    """
+    Enregistre le profil finalement choisi par l'utilisateur.
+    Permet de comparer la recommandation ML avec le choix réel.
+    Utilise le prediction_id retourné par /recommend.
+    """
+    from app.firebase import log_feedback
+    doc = log_feedback(data.prediction_id, data.chosen_profile)
+    return FeedbackOutput(
+        prediction_id=data.prediction_id,
+        recommended_profile=doc["recommended_profile"],
+        chosen_profile=doc["chosen_profile"],
+        followed_recommendation=doc["followed_recommendation"],
+    )
+
+
+@app.get("/logs/comparison", response_model=ComparisonOutput)
+def comparison() -> ComparisonOutput:
+    """
+    Statistiques de comparaison : profil recommandé par le ML vs profil choisi par l'utilisateur.
+    Indique le taux de suivi de la recommandation et les écarts par profil.
+    """
+    from app.firebase import get_comparison_stats
+    stats = get_comparison_stats()
+    return ComparisonOutput(**stats)
+
+
 @app.post("/sessions/exercises", response_model=SessionOutput)
 def session_exercises(data: SessionInput) -> SessionOutput:
     """
@@ -70,8 +98,3 @@ def session_exercises(data: SessionInput) -> SessionOutput:
     return service.get_sessions(data)
 
 
-# Rétrocompatibilité
-@app.post("/nutrition/predict", response_model=NutritionOutput, deprecated=True)
-def predict_legacy(data: NutritionInput) -> NutritionOutput:
-    """Ancien endpoint — utiliser /recommend à la place."""
-    return service.predict_legacy(data)
