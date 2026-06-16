@@ -1,7 +1,16 @@
-from fastapi import FastAPI
+import requests as _requests
+
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.schemas import RecommendInput, RecommendOutput, CaloriesInput, CaloriesOutput, MealsInput, MealsOutput, SessionInput, SessionOutput, FeedbackInput, FeedbackOutput, ComparisonOutput
+from app.schemas import (
+    RecommendInput, RecommendOutput,
+    CaloriesInput, CaloriesOutput,
+    MealsInput, MealsOutput,
+    SessionInput, SessionOutput,
+    FeedbackInput, FeedbackOutput,
+    ComparisonOutput,
+)
 from app.service import FitnessService
 
 app = FastAPI(
@@ -77,7 +86,17 @@ def feedback(data: FeedbackInput) -> FeedbackOutput:
     Utilise le prediction_id retourné par /recommend.
     """
     from app.firebase import log_feedback
-    doc = log_feedback(data.prediction_id, data.chosen_profile)
+    try:
+        doc = log_feedback(data.prediction_id, data.chosen_profile)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except _requests.exceptions.Timeout:
+        raise HTTPException(
+            status_code=503,
+            detail="Firebase indisponible (timeout). Réessayez dans quelques secondes.",
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur Firebase: {e}")
     return FeedbackOutput(
         prediction_id=data.prediction_id,
         recommended_profile=doc["recommended_profile"],
@@ -93,7 +112,15 @@ def comparison() -> ComparisonOutput:
     Indique le taux de suivi de la recommandation et les écarts par profil.
     """
     from app.firebase import get_comparison_stats
-    stats = get_comparison_stats()
+    try:
+        stats = get_comparison_stats()
+    except _requests.exceptions.Timeout:
+        raise HTTPException(
+            status_code=503,
+            detail="Firebase indisponible (timeout). Réessayez dans quelques secondes.",
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur Firebase: {e}")
     return ComparisonOutput(**stats)
 
 
@@ -105,5 +132,3 @@ def session_exercises(data: SessionInput) -> SessionOutput:
     Filtre optionnel par type de séance (push, pull, legs, full_body, hiit, cardio, etc.).
     """
     return service.get_sessions(data)
-
-

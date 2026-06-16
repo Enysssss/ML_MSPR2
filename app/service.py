@@ -102,7 +102,7 @@ class FitnessService:
 
         prediction_id = str(uuid.uuid4())
 
-        # Log Firebase (silencieux si Firebase non configuré)
+        # Log Firebase
         try:
             from app.firebase import log_prediction
             log_prediction(prediction_id, profile, round(confidence, 4), {
@@ -111,8 +111,9 @@ class FitnessService:
                 "body_fat_pct": data.body_fat_pct, "resting_bpm": data.resting_bpm,
                 "experience_level": data.experience_level,
             })
-        except Exception:
-            pass
+            print(f"[Firebase] ✓ prediction {prediction_id} sauvegardée")
+        except Exception as e:
+            print(f"[Firebase] ✗ ERREUR log_prediction : {type(e).__name__}: {e}")
 
         return RecommendOutput(
             prediction_id=prediction_id,
