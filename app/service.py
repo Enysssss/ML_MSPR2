@@ -213,6 +213,7 @@ class FitnessService:
 
         with psycopg2.connect(db_url, cursor_factory=psycopg2.extras.RealDictCursor) as conn:
             with conn.cursor() as cur:
+                cur.execute('SET search_path TO "Data"')
                 cur.execute(
                     f"""
                     SELECT name, meal_type, calories_kcal, proteins_g, carbs_g, fats_g, allergens
@@ -268,6 +269,7 @@ class FitnessService:
 
         with psycopg2.connect(db_url, cursor_factory=psycopg2.extras.RealDictCursor) as conn:
             with conn.cursor() as cur:
+                cur.execute('SET search_path TO "Data"')
                 cur.execute(
                     f"""
                     SELECT id, name, profile, session_type, total_duration_min,

@@ -177,6 +177,7 @@ def seed(cur):
 if __name__ == "__main__":
     with psycopg2.connect(DATABASE_URL) as conn:
         with conn.cursor() as cur:
+            cur.execute('SET search_path TO "Data"')
             create_table(cur)
             n = seed(cur)
         conn.commit()

@@ -542,6 +542,7 @@ def seed_sessions(cur, ex_map):
 if __name__ == "__main__":
     with psycopg2.connect(DATABASE_URL, cursor_factory=psycopg2.extras.RealDictCursor) as conn:
         with conn.cursor() as cur:
+            cur.execute('SET search_path TO "Data"')
             create_tables(cur)
             ex_map = seed_exercises(cur)
             n_sessions, n_links = seed_sessions(cur, ex_map)
