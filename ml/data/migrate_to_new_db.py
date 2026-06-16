@@ -22,7 +22,6 @@ def migrate_exercises():
     old_cur = old.cursor()
     new_cur = new.cursor()
 
-    # Récupérer la structure et les données
     old_cur.execute("SELECT * FROM exercises LIMIT 1")
     cols = [d[0] for d in old_cur.description]
     print(f"  Colonnes trouvées : {cols}")
@@ -31,7 +30,6 @@ def migrate_exercises():
     total = old_cur.fetchone()["n"]
     print(f"  {total} exercices à migrer...")
 
-    # Créer la table dans la nouvelle BDD (même structure)
     old_cur.execute("""
         SELECT column_name, data_type, character_maximum_length
         FROM information_schema.columns
@@ -69,7 +67,6 @@ def migrate_exercises():
     new_cur.execute(f"DROP TABLE IF EXISTS exercises CASCADE")
     new_cur.execute(f"CREATE TABLE exercises ({', '.join(col_defs)})")
 
-    # Copier par batch
     BATCH = 500
     offset = 0
     copied = 0
@@ -99,7 +96,6 @@ def migrate_exercises():
 if __name__ == "__main__":
     migrate_exercises()
 
-    # Re-seed meals et sessions sur la nouvelle BDD
     env = os.environ.copy()
     env["DATABASE_URL"] = NEW_URL
 

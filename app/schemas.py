@@ -1,6 +1,5 @@
 from pydantic import BaseModel, Field, model_validator
 
-
 class RecommendInput(BaseModel):
     age: int = Field(..., ge=18, le=65, description="Âge en années (18-65)")
     gender: str = Field(..., pattern="^(male|female)$", description="Genre : 'male' ou 'female'")
@@ -56,11 +55,6 @@ class RecommendOutput(BaseModel):
     bmi_category: str
     program: ProgramOutput
 
-
-# ---------------------------------------------------------------------------
-# Endpoint /nutrition/calories
-# ---------------------------------------------------------------------------
-
 VALID_PROFILES = [
     "perte_poids_debutant",
     "perte_poids_confirme",
@@ -74,7 +68,6 @@ VALID_ALLERGENS = [
     "gluten", "lactose", "oeufs", "fruits_a_coque",
     "arachides", "soja", "poisson", "crustaces",
 ]
-
 
 class CaloriesInput(BaseModel):
     age: int = Field(..., ge=18, le=65, description="Âge en années")
@@ -91,11 +84,6 @@ class CaloriesInput(BaseModel):
             raise ValueError(f"Profil invalide. Valeurs acceptées : {VALID_PROFILES}")
         return self
 
-
-# ---------------------------------------------------------------------------
-# Endpoint /nutrition/meals
-# ---------------------------------------------------------------------------
-
 class MealItem(BaseModel):
     name: str
     meal_type: str
@@ -104,7 +92,6 @@ class MealItem(BaseModel):
     carbs_g: float
     fats_g: float
     allergens: list[str]
-
 
 class MealsInput(BaseModel):
     profile: str = Field(..., description="Un des 6 profils fitness")
@@ -128,14 +115,12 @@ class MealsInput(BaseModel):
             raise ValueError("meal_type doit être : breakfast, lunch, dinner ou snack")
         return self
 
-
 class MealsOutput(BaseModel):
     profile: str
     allergens_excluded: list[str]
     meal_type_filter: str | None
     count: int
     meals: list[MealItem]
-
 
 class CaloriesOutput(BaseModel):
     bmr: float = Field(description="Métabolisme de base Harris-Benedict (kcal/j)")
@@ -148,11 +133,6 @@ class CaloriesOutput(BaseModel):
     protein_target_g: float = Field(description="Apport protéique recommandé (g/j)")
     note: str = Field(description="Conseil personnalisé selon le profil")
 
-
-# ---------------------------------------------------------------------------
-# Endpoint /sessions/exercises
-# ---------------------------------------------------------------------------
-
 class SessionExerciseItem(BaseModel):
     order_num: int
     exercise_name: str
@@ -163,7 +143,6 @@ class SessionExerciseItem(BaseModel):
     reps: str | None
     rest_sec: int | None
     notes: str | None
-
 
 class WorkoutSessionOutput(BaseModel):
     session_id: int
@@ -176,11 +155,6 @@ class WorkoutSessionOutput(BaseModel):
     objective: str | None
     exercises: list[SessionExerciseItem]
 
-
-# ---------------------------------------------------------------------------
-# Endpoint /logs/feedback + /logs/comparison
-# ---------------------------------------------------------------------------
-
 class FeedbackInput(BaseModel):
     prediction_id: str = Field(..., description="ID retourné par /recommend")
     chosen_profile: str = Field(..., description="Profil finalement choisi par l'utilisateur")
@@ -191,13 +165,11 @@ class FeedbackInput(BaseModel):
             raise ValueError(f"Profil invalide. Valeurs acceptées : {VALID_PROFILES}")
         return self
 
-
 class FeedbackOutput(BaseModel):
     prediction_id: str
     recommended_profile: str
     chosen_profile: str
     followed_recommendation: bool
-
 
 class ComparisonOutput(BaseModel):
     total_with_feedback: int
@@ -205,14 +177,12 @@ class ComparisonOutput(BaseModel):
     follow_rate_pct: float
     by_profile: dict
 
-
 VALID_BODY_REGIONS = [
     "bras_droit", "bras_gauche", "bras",
     "jambe_droite", "jambe_gauche", "jambes",
     "dos", "epaules", "abdominaux", "pied", "nuque",
 ]
 
-# Mapping région → valeurs body_part dans la table workout_exercises
 BODY_REGION_TO_PARTS: dict[str, list[str]] = {
     "bras_droit":   ["Biceps", "Triceps", "Épaules", "Avant-bras"],
     "bras_gauche":  ["Biceps", "Triceps", "Épaules", "Avant-bras"],
@@ -226,7 +196,6 @@ BODY_REGION_TO_PARTS: dict[str, list[str]] = {
     "pied":         ["Mollets"],
     "nuque":        ["Trapèzes"],
 }
-
 
 class SessionInput(BaseModel):
     profile: str = Field(..., description="Un des 6 profils fitness")
@@ -248,7 +217,6 @@ class SessionInput(BaseModel):
             raise ValueError(f"Régions inconnues : {unknown}. Valeurs acceptées : {VALID_BODY_REGIONS}")
         return self
 
-
 class SessionOutput(BaseModel):
     profile: str
     session_type_filter: str | None
@@ -256,16 +224,11 @@ class SessionOutput(BaseModel):
     count: int
     sessions: list[WorkoutSessionOutput]
 
-
-# ---------------------------------------------------------------------------
-# Rétrocompatibilité avec l'ancien endpoint /nutrition/predict
-# ---------------------------------------------------------------------------
 class NutritionInput(BaseModel):
     age: int = Field(..., ge=18, le=65)
     poids_kg: float = Field(..., gt=20, lt=300)
     taille_cm: float = Field(..., gt=100, lt=250)
     taux_masse_grasse: float = Field(..., ge=4.0, le=55.0)
-
 
 class NutritionOutput(BaseModel):
     imc: float

@@ -17,9 +17,6 @@ if not DATABASE_URL:
         "Voir .env.example pour le format."
     )
 
-# ---------------------------------------------------------------------------
-# Mapping profil → filtres BDD
-# ---------------------------------------------------------------------------
 
 _PROFILE_CONFIG: dict[str, dict] = {
     "prise_masse_confirme": {
@@ -97,9 +94,6 @@ _PROFILE_CONFIG: dict[str, dict] = {
 }
 
 
-# ---------------------------------------------------------------------------
-# Requêtes BDD
-# ---------------------------------------------------------------------------
 
 def _get_exercises(cur, filters: dict, limit: int = 6) -> list[str]:
     categories_ph = ",".join(["%s"] * len(filters["categories"]))
@@ -156,9 +150,6 @@ def _get_foods(cur, filters: dict, limit: int = 5) -> list[str]:
     ]
 
 
-# ---------------------------------------------------------------------------
-# Interface publique
-# ---------------------------------------------------------------------------
 
 @dataclass
 class Program:

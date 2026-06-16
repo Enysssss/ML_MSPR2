@@ -8,11 +8,7 @@ import psycopg2.extras
 
 DATABASE_URL = os.environ["DATABASE_URL"]
 
-# ---------------------------------------------------------------------------
-# EXERCICES
-# ---------------------------------------------------------------------------
 EXERCISES = [
-    # ── FORCE / COMPOUND ────────────────────────────────────────────────────
     {"name": "Squat barre", "body_part": "Quadriceps", "category": "Strength", "difficulty": "intermediaire", "equipment": "barre", "description": "Squat avec barre sur les trapèzes, descente jusqu'aux cuisses parallèles au sol."},
     {"name": "Deadlift roumain", "body_part": "Ischio-jambiers", "category": "Strength", "difficulty": "intermediaire", "equipment": "barre", "description": "Descente contrôlée de la barre le long des jambes, dos droit, hanches en arrière."},
     {"name": "Développé couché barre", "body_part": "Pectoraux", "category": "Strength", "difficulty": "intermediaire", "equipment": "barre", "description": "Allongé sur le banc, descente de la barre jusqu'à effleurer la poitrine, poussée explosive."},
@@ -33,7 +29,6 @@ EXERCISES = [
     {"name": "Curl marteau haltères", "body_part": "Biceps", "category": "Strength", "difficulty": "debutant", "equipment": "halteres", "description": "Flexion des avant-bras en prise neutre (pouce vers le haut)."},
     {"name": "Rowing unilatéral haltère", "body_part": "Dos", "category": "Strength", "difficulty": "debutant", "equipment": "halteres", "description": "Appui sur le banc, tirer l'haltère vers la hanche en engageant le grand dorsal."},
 
-    # ── POIDS DE CORPS ──────────────────────────────────────────────────────
     {"name": "Pompes classiques", "body_part": "Pectoraux", "category": "Strength", "difficulty": "debutant", "equipment": "poids_corps", "description": "Corps gainé, descendre jusqu'à effleurer le sol, pousser."},
     {"name": "Gainage planche", "body_part": "Abdominaux", "category": "Strength", "difficulty": "debutant", "equipment": "poids_corps", "description": "Corps aligné sur les avant-bras et les orteils, maintenir la position."},
     {"name": "Mountain climbers", "body_part": "Abdominaux", "category": "Cardio", "difficulty": "intermediaire", "equipment": "poids_corps", "description": "En position de pompe, ramener alternativement les genoux vers la poitrine rapidement."},
@@ -45,7 +40,6 @@ EXERCISES = [
     {"name": "High knees", "body_part": "Corps entier", "category": "Cardio", "difficulty": "debutant", "equipment": "poids_corps", "description": "Course sur place en montant les genoux le plus haut possible."},
     {"name": "Jumping jacks", "body_part": "Corps entier", "category": "Cardio", "difficulty": "debutant", "equipment": "poids_corps", "description": "Sauts avec écartement simultané des jambes et des bras."},
 
-    # ── CARDIO ──────────────────────────────────────────────────────────────
     {"name": "Course à pied zone 2", "body_part": "Corps entier", "category": "Cardio", "difficulty": "debutant", "equipment": "aucun", "description": "Course à allure conversationnelle (60-70% FCmax), maintien de l'endurance de base."},
     {"name": "Vélo stationnaire zone 2", "body_part": "Corps entier", "category": "Cardio", "difficulty": "debutant", "equipment": "velo", "description": "Pédalage à résistance modérée, 60-70% FCmax, effort soutenu sans essoufflement."},
     {"name": "Intervalles course 3min/2min", "body_part": "Corps entier", "category": "Cardio", "difficulty": "intermediaire", "equipment": "aucun", "description": "3 min à 80-85% FCmax, 2 min récupération active. Répéter 6 fois."},
@@ -54,7 +48,6 @@ EXERCISES = [
     {"name": "Marche rapide inclinée", "body_part": "Corps entier", "category": "Cardio", "difficulty": "debutant", "equipment": "tapis", "description": "Marche à 5-6 km/h avec une inclinaison de 8-10%, excellent cardio low-impact."},
     {"name": "Natation crawl", "body_part": "Corps entier", "category": "Cardio", "difficulty": "intermediaire", "equipment": "piscine", "description": "Nager en crawl à allure modérée, excellent cardio sans impact articulaire."},
 
-    # ── STRETCHING / MOBILITÉ ───────────────────────────────────────────────
     {"name": "Étirement ischio-jambiers debout", "body_part": "Ischio-jambiers", "category": "Stretching", "difficulty": "debutant", "equipment": "aucun", "description": "Jambe tendue posée sur un support à hauteur de hanche, incliner le buste vers l'avant."},
     {"name": "Pigeon yoga (fessiers)", "body_part": "Fessiers", "category": "Stretching", "difficulty": "debutant", "equipment": "tapis", "description": "Position du pigeon au sol, maintenir 45-60 secondes de chaque côté."},
     {"name": "Étirement quadriceps debout", "body_part": "Quadriceps", "category": "Stretching", "difficulty": "debutant", "equipment": "aucun", "description": "Plier le genou, attraper la cheville derrière soi, hanches droites."},
@@ -64,14 +57,7 @@ EXERCISES = [
     {"name": "Foam roller dos et cuisses", "body_part": "Corps entier", "category": "Stretching", "difficulty": "debutant", "equipment": "foam_roller", "description": "Auto-massage myofascial : rouler lentement sur les zones tendues, 30-60 sec par zone."},
 ]
 
-# ---------------------------------------------------------------------------
-# SESSIONS (nom, profil, type, durée, difficulté, description, objectif)
-# + exercises_list = [(nom_exercice, sets, reps, rest_sec, notes)]
-# ---------------------------------------------------------------------------
 SESSIONS = [
-    # ════════════════════════════════════════════════════════════
-    # PRISE DE MASSE — CONFIRMÉ (split push/pull/legs)
-    # ════════════════════════════════════════════════════════════
     {
         "name": "Push Day — Pectoraux / Épaules / Triceps",
         "profile": "prise_masse_confirme",
@@ -142,9 +128,6 @@ SESSIONS = [
         ],
     },
 
-    # ════════════════════════════════════════════════════════════
-    # PRISE DE MASSE — DÉBUTANT (full body 3x/semaine)
-    # ════════════════════════════════════════════════════════════
     {
         "name": "Full Body A — Débutant Prise de Masse",
         "profile": "prise_masse_debutant",
@@ -195,9 +178,6 @@ SESSIONS = [
         ],
     },
 
-    # ════════════════════════════════════════════════════════════
-    # PERTE DE POIDS — CONFIRMÉ (HIIT + circuit training)
-    # ════════════════════════════════════════════════════════════
     {
         "name": "HIIT Métabolique — Brûlage Calorique Max",
         "profile": "perte_poids_confirme",
@@ -262,9 +242,6 @@ SESSIONS = [
         ],
     },
 
-    # ════════════════════════════════════════════════════════════
-    # PERTE DE POIDS — DÉBUTANT (cardio doux + renforcement)
-    # ════════════════════════════════════════════════════════════
     {
         "name": "Cardio Doux — Zone 2 Débutant",
         "profile": "perte_poids_debutant",
@@ -316,9 +293,6 @@ SESSIONS = [
         ],
     },
 
-    # ════════════════════════════════════════════════════════════
-    # AMÉLIORATION CARDIO (entraînement polarisé 80/20)
-    # ════════════════════════════════════════════════════════════
     {
         "name": "Endurance Fondamentale — Zone 2",
         "profile": "amelioration_cardio",
@@ -380,9 +354,6 @@ SESSIONS = [
         ],
     },
 
-    # ════════════════════════════════════════════════════════════
-    # MAINTIEN BIEN-ÊTRE (équilibre, variété, plaisir)
-    # ════════════════════════════════════════════════════════════
     {
         "name": "Yoga Fonctionnel — Équilibre & Souplesse",
         "profile": "maintien_bien_etre",
@@ -436,9 +407,6 @@ SESSIONS = [
 ]
 
 
-# ---------------------------------------------------------------------------
-# CREATE & SEED
-# ---------------------------------------------------------------------------
 
 def create_tables(cur):
     cur.execute("""

@@ -10,14 +10,12 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler, OrdinalEncoder, LabelEncoder
 
 
-# Features numériques brutes
 NUM_FEATURES = [
     "age", "weight_kg", "height_cm", "bmi", "body_fat_pct",
     "resting_bpm", "experience_level", "fitness_score",
     "bmi_x_exp", "fat_per_exp",
 ]
 
-# Features catégorielles ordinales (ordre défini)
 ORD_FEATURES = {
     "bmi_category":  ["sous_poids", "normal", "surpoids", "obesite"],
     "fat_category":  ["essentiel", "athlete", "fitness", "acceptable", "obese"],
@@ -25,7 +23,6 @@ ORD_FEATURES = {
     "age_group":     ["18-25", "26-35", "36-45", "46-55", "56-65"],
 }
 
-# Features binaires (gender)
 BIN_FEATURES = ["gender"]
 
 

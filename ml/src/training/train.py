@@ -30,7 +30,6 @@ import matplotlib.pyplot as plt
 
 warnings.filterwarnings("ignore")
 
-# Chemins
 ROOT       = Path(__file__).parent.parent.parent.parent
 DATA_PATH  = ROOT / "ml" / "data" / "processed" / "healthai_dataset.csv"
 MODELS_DIR = ROOT / "ml" / "models"
@@ -47,17 +46,11 @@ from src.preprocessing.pipeline import (
 )
 
 
-# ---------------------------------------------------------------------------
-# MLflow config
-# ---------------------------------------------------------------------------
 MLFLOW_DB  = str(ROOT / "ml" / "artifacts" / "mlflow.db")
 mlflow.set_tracking_uri(f"sqlite:///{MLFLOW_DB}")
 mlflow.set_experiment("HealthAI_Coach")
 
 
-# ---------------------------------------------------------------------------
-# Hyperparamètres à rechercher
-# ---------------------------------------------------------------------------
 SEARCH_SPACES = {
     "RandomForest": {
         "clf__n_estimators":    [100, 200, 300, 500],
@@ -98,9 +91,6 @@ except ImportError:
     print("[train] XGBoost non disponible — comparaison RF vs GB uniquement")
 
 
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
 
 def _save_confusion_matrix(cm, classes, name: str, run_id: str):
     fig, ax = plt.subplots(figsize=(8, 6))
@@ -173,9 +163,6 @@ def _save_learning_curve(model, X_train, y_train, name: str):
     return str(path)
 
 
-# ---------------------------------------------------------------------------
-# Boucle d'entraînement
-# ---------------------------------------------------------------------------
 
 def train_and_evaluate(X_train, X_test, y_train, y_test, label_encoder):
     results = {}
@@ -195,7 +182,6 @@ def train_and_evaluate(X_train, X_test, y_train, y_test, label_encoder):
         search_space = SEARCH_SPACES.get(model_name, {})
 
         with mlflow.start_run(run_name=model_name):
-            # RandomizedSearchCV
             search = RandomizedSearchCV(
                 pipe,
                 param_distributions=search_space,
@@ -209,7 +195,6 @@ def train_and_evaluate(X_train, X_test, y_train, y_test, label_encoder):
             search.fit(X_train, y_train)
             best_model = search.best_estimator_
 
-            # Métriques test
             y_pred = best_model.predict(X_test)
             y_pred_labels = label_encoder.inverse_transform(y_pred)
             y_test_labels  = label_encoder.inverse_transform(y_test)
@@ -218,7 +203,6 @@ def train_and_evaluate(X_train, X_test, y_train, y_test, label_encoder):
             f1_mac  = f1_score(y_test, y_pred, average="macro")
             f1_wei  = f1_score(y_test, y_pred, average="weighted")
 
-            # Cross-val sur train
             cv_scores = cross_val_score(best_model, X_train, y_train,
                                         cv=cv, scoring="f1_macro", n_jobs=-1)
     
@@ -229,7 +213,6 @@ def train_and_evaluate(X_train, X_test, y_train, y_test, label_encoder):
             print(f"\n  Classification Report :")
             print(classification_report(y_test_labels, y_pred_labels))
 
-            # MLflow log
             mlflow.log_params({k.replace("clf__", ""): v
                                for k, v in search.best_params_.items()})
             mlflow.log_metrics({
@@ -240,7 +223,6 @@ def train_and_evaluate(X_train, X_test, y_train, y_test, label_encoder):
                 "cv_f1_std":      cv_scores.std(),
             })
 
-            # Artifacts
             cm = confusion_matrix(y_test, y_pred)
             cm_path = _save_confusion_matrix(cm, label_encoder.classes_, model_name, mlflow.active_run().info.run_id)
             fi_path = _save_feature_importance(best_model, get_feature_names(), model_name)
@@ -263,9 +245,6 @@ def train_and_evaluate(X_train, X_test, y_train, y_test, label_encoder):
     return results
 
 
-# ---------------------------------------------------------------------------
-# Main
-# ---------------------------------------------------------------------------
 
 def main():
     print("[train] Chargement et préparation des données ...")
@@ -285,7 +264,6 @@ def main():
 
     results = train_and_evaluate(X_train, X_test, y_train, y_test, label_encoder)
 
-    # Meilleur modèle sur F1-macro
     best_name = max(results, key=lambda k: results[k]["f1_macro"])
     best = results[best_name]
     print(f"\n{'='*60}")
@@ -295,12 +273,10 @@ def main():
     print(f" CV F1     : {best['cv_f1']:.4f}")
     print(f"{'='*60}")
 
-    # Sauvegarde
     joblib.dump(best["model"],  MODELS_DIR / "model.pkl")
     joblib.dump(label_encoder,  MODELS_DIR / "encoder.pkl")
     print(f"\n[train] Modèle sauvegardé dans {MODELS_DIR}/")
 
-    # Tableau comparatif final
     print("\n Comparaison des modèles :")
     print(f"{'Modèle':<22} {'F1-macro':>10} {'Accuracy':>10} {'CV F1':>10}")
     print("-" * 56)
@@ -327,7 +303,6 @@ def _save_model_comparison(results: dict, best_name: str):
     bars2 = ax.bar(x,         acc,    width, label="Accuracy (test)",   color=colors[1])
     bars3 = ax.bar(x + width, cv_f1,  width, label="CV F1-macro (5-fold)", color=colors[2])
 
-    # Valeurs au-dessus des barres
     for bars in (bars1, bars2, bars3):
         for bar in bars:
             h = bar.get_height()
@@ -336,7 +311,6 @@ def _save_model_comparison(results: dict, best_name: str):
                         xytext=(0, 4), textcoords="offset points",
                         ha="center", va="bottom", fontsize=9)
 
-    # Mettre en évidence le meilleur modèle
     best_idx = names.index(best_name)
     ax.axvspan(best_idx - 0.4, best_idx + 0.4, alpha=0.08, color="gold", zorder=0)
 
@@ -349,7 +323,6 @@ def _save_model_comparison(results: dict, best_name: str):
     ax.grid(axis="y", alpha=0.3)
     ax.spines[["top", "right"]].set_visible(False)
 
-    # Badge "SÉLECTIONNÉ"
     ax.annotate("★ SÉLECTIONNÉ",
                 xy=(best_idx, max(f1_mac[best_idx], acc[best_idx], cv_f1[best_idx]) + 0.06),
                 ha="center", fontsize=10, color="goldenrod", fontweight="bold")

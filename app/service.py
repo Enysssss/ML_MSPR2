@@ -39,13 +39,11 @@ _LEGACY_MESSAGES = {
     "prise_masse": "Augmentez votre apport calorique avec des protéines de qualité et un entraînement en résistance.",
 }
 
-
 def _bmi_category(bmi: float) -> str:
     for threshold, label in _BMI_CATEGORIES:
         if bmi < threshold:
             return label
     return "Obésité"
-
 
 class FitnessService:
     _instance = None
@@ -102,7 +100,6 @@ class FitnessService:
 
         prediction_id = str(uuid.uuid4())
 
-        # Log Firebase
         try:
             from app.firebase import log_prediction
             log_prediction(prediction_id, profile, round(confidence, 4), {
@@ -126,42 +123,34 @@ class FitnessService:
         )
 
     def calculate_calories(self, data: CaloriesInput) -> CaloriesOutput:
-        # Harris-Benedict (révision Mifflin-St Jeor, plus précise)
         if data.gender == "male":
             bmr = 88.362 + (13.397 * data.weight_kg) + (4.799 * data.height_cm) - (5.677 * data.age)
         else:
             bmr = 447.593 + (9.247 * data.weight_kg) + (3.098 * data.height_cm) - (4.330 * data.age)
-
-        # Facteur d'activité selon le profil (sessions/semaine)
+            
         _ACTIVITY = {
-            "maintien_bien_etre":    1.375,  # 3 séances légères
-            "perte_poids_debutant":  1.375,  # 3 séances modérées
-            "amelioration_cardio":   1.55,   # 4 séances cardio
-            "perte_poids_confirme":  1.55,   # 4 séances intenses
-            "prise_masse_debutant":  1.375,  # 3 séances muscu
-            "prise_masse_confirme":  1.55,   # 4 séances muscu
+            "maintien_bien_etre":    1.375,
+            "perte_poids_debutant":  1.375,
+            "amelioration_cardio":   1.55,
+            "perte_poids_confirme":  1.55,
+            "prise_masse_debutant":  1.375,
+            "prise_masse_confirme":  1.55,
         }
         tdee = round(bmr * _ACTIVITY[data.profile], 1)
 
-        # Variation totale et hebdomadaire nécessaire
-        total_change = data.target_weight_kg - data.weight_kg  # négatif = perte, positif = prise
+        total_change = data.target_weight_kg - data.weight_kg
         weekly_change = total_change / data.weeks_to_goal
-        # 1 kg de graisse ≈ 7700 kcal
         daily_adjustment = round((weekly_change * 7700) / 7, 1)
 
-        # Clamp selon les recommandations de sécurité
         if total_change < 0:
-            # Perte : déficit max 750 kcal/j (>750 = risque masse musculaire)
             daily_adjustment = max(daily_adjustment, -750)
             goal_type = "deficit"
         else:
-            # Prise : surplus max 500 kcal/j (>500 = trop de gras pris)
             daily_adjustment = min(daily_adjustment, 500)
             goal_type = "surplus"
 
         daily_target = round(tdee + daily_adjustment, 0)
 
-        # Protéines selon le profil
         _PROTEIN_RATIO = {
             "perte_poids_debutant":  1.6,
             "perte_poids_confirme":  2.0,
@@ -254,7 +243,6 @@ class FitnessService:
         if not db_url:
             raise RuntimeError("DATABASE_URL non configurée.")
 
-        # Construire la liste des body_parts à exclure depuis les régions
         excluded_parts: set[str] = set()
         for region in data.body_parts_to_exclude:
             excluded_parts.update(BODY_REGION_TO_PARTS.get(region, []))
@@ -285,7 +273,6 @@ class FitnessService:
 
                 sessions = []
                 for s in sessions_rows:
-                    # Exclure les exercices qui sollicitent les zones blessées
                     if excluded_parts:
                         exclude_list = list(excluded_parts)
                         ex_params = (s["id"], exclude_list)
@@ -353,7 +340,6 @@ class FitnessService:
         """Rétrocompatibilité avec l'ancien endpoint /nutrition/predict."""
         imc = data.poids_kg / (data.taille_cm / 100) ** 2
 
-        # Mapping simple vers les 3 anciens labels via règle
         if imc >= 27.5:
             label = "perte_poids"
         elif imc < 22:

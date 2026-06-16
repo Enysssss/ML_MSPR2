@@ -85,7 +85,6 @@ def main():
     report = classification_report(y_test_labels, y_pred_labels)
     print(report)
 
-    # Sauvegarde rapport JSON
     report_dict = classification_report(y_test_labels, y_pred_labels, output_dict=True)
     summary = {
         "accuracy":    round(acc,    4),
@@ -110,7 +109,6 @@ def main():
         json.dump(summary, f, ensure_ascii=False, indent=2)
     print(f"\n[evaluate] Rapport JSON : {report_path}")
 
-    # Confusion matrix
     cm = confusion_matrix(y_test, y_pred)
     fig, ax = plt.subplots(figsize=(9, 7))
     disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=encoder.classes_)
@@ -122,7 +120,6 @@ def main():
     plt.close()
     print(f"[evaluate] Matrice de confusion : {cm_path}")
 
-    # Barplot support par classe
     classes   = list(summary["per_class"].keys())
     f1_scores = [summary["per_class"][c]["f1-score"] for c in classes]
     supports  = [summary["per_class"][c]["support"]  for c in classes]

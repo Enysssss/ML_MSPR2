@@ -21,39 +21,32 @@ OUTPUT_DIR = Path(__file__).parent / "processed"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 
-# ---------------------------------------------------------------------------
-# 1. Générer les variables de base
-# ---------------------------------------------------------------------------
 
 def generate_base(n: int) -> pd.DataFrame:
-    gender = RNG.choice([0, 1], size=n, p=[0.48, 0.52])   # 0=F 1=M
+    gender = RNG.choice([0, 1], size=n, p=[0.48, 0.52])
     age    = RNG.integers(18, 66, size=n)
-    exp    = RNG.choice([1, 2, 3], size=n, p=[0.50, 0.35, 0.15])  # beginner/inter/advanced
+    exp    = RNG.choice([1, 2, 3], size=n, p=[0.50, 0.35, 0.15])
 
-    # Taille : distributions NHANES 2017-2018 stratifiées par genre
     height = np.where(
         gender == 1,
-        RNG.normal(176, 7, n),   # hommes cm
-        RNG.normal(163, 6, n),   # femmes cm
+        RNG.normal(176, 7, n),
+        RNG.normal(163, 6, n),
     ).clip(150, 210)
 
-    # Poids : corrélé à la taille + expérience (exp élevée → moins de surpoids)
     bmi_mean = np.where(
-        exp == 1, RNG.normal(27.5, 4.5, n),   # débutants : surpoids plus fréquent
+        exp == 1, RNG.normal(27.5, 4.5, n),
         np.where(exp == 2, RNG.normal(25.0, 3.5, n),
                            RNG.normal(23.0, 2.8, n))
     )
     bmi = bmi_mean.clip(16, 45)
     weight = bmi * (height / 100) ** 2
 
-    # Masse grasse % : ACSM ranges par genre + corrélation BMI
     fat_base = np.where(gender == 1,
-        bmi * 1.05 - 10.0 + RNG.normal(0, 3, n),   # hommes
-        bmi * 1.10 - 5.0  + RNG.normal(0, 3, n),   # femmes
+        bmi * 1.05 - 10.0 + RNG.normal(0, 3, n),
+        bmi * 1.10 - 5.0  + RNG.normal(0, 3, n),
     )
     fat_pct = fat_base.clip(5, 50)
 
-    # Resting BPM : moyenne 70, plus élevé chez sédentaires (exp faible)
     resting_bpm_mean = np.where(exp == 1, 76, np.where(exp == 2, 70, 62))
     resting_bpm = (resting_bpm_mean + RNG.normal(0, 6, n)).clip(45, 100).astype(int)
 
@@ -70,14 +63,11 @@ def generate_base(n: int) -> pd.DataFrame:
     return df
 
 
-# ---------------------------------------------------------------------------
-# 2. Labeling basé sur règles ACSM 2022 + bruit réaliste
-# ---------------------------------------------------------------------------
 
 def _fat_is_high(row: pd.Series) -> bool:
-    if row["gender"] == 1:   # homme : ACSM > 25 % = "obèse"
+    if row["gender"] == 1:
         return row["body_fat_pct"] > 23
-    return row["body_fat_pct"] > 32   # femme
+    return row["body_fat_pct"] > 32
 
 def _fat_is_low(row: pd.Series) -> bool:
     if row["gender"] == 1:
@@ -93,19 +83,15 @@ def assign_label(df: pd.DataFrame) -> pd.Series:
         hr    = row["resting_bpm"]
         age   = row["age"]
 
-        # Surpoids / obésité → perte de poids prioritaire
         if bmi >= 27.5 or _fat_is_high(row):
             label = "perte_poids_debutant" if exp == 1 else "perte_poids_confirme"
 
-        # Sous-poids / faible masse grasse → prise de masse
         elif bmi < 22.5 or _fat_is_low(row):
             label = "prise_masse_debutant" if exp == 1 else "prise_masse_confirme"
 
-        # BPM repos élevé (> 72) + profil intermédiaire → amélioration cardio
         elif hr > 72 and 22 <= bmi <= 28:
             label = "amelioration_cardio"
 
-        # Profil équilibré → maintien bien-être
         else:
             label = "maintien_bien_etre"
 
@@ -113,8 +99,6 @@ def assign_label(df: pd.DataFrame) -> pd.Series:
 
     labels = np.array(labels)
 
-    # Bruit réaliste : 12 % de labels flippés vers classe adjacente
-    # Simule l'ambiguité des cas limites (un jury appréciera cette honnêteté)
     noise_idx = RNG.choice(len(labels), size=int(0.12 * len(labels)), replace=False)
     adjacents = {
         "perte_poids_debutant":  "amelioration_cardio",
@@ -130,9 +114,6 @@ def assign_label(df: pd.DataFrame) -> pd.Series:
     return pd.Series(labels, name="fitness_profile")
 
 
-# ---------------------------------------------------------------------------
-# 3. Générer + sauvegarder
-# ---------------------------------------------------------------------------
 
 def main():
     print("Génération du dataset HealthAI Coach...")

@@ -1,6 +1,3 @@
-"""
-Service Firebase Firestore — via REST HTTP (pas gRPC, compatible WSL2 et Railway).
-"""
 import glob
 import os
 import json
@@ -27,10 +24,8 @@ def _get_creds():
     if b64:
         info = json.loads(base64.b64decode(b64).decode("utf-8"))
     else:
-        # Cherche d'abord la variable d'env explicite
         cred_path = os.environ.get("FIREBASE_CREDENTIALS")
         if not cred_path:
-            # Glob : trouve n'importe quel fichier firebase-adminsdk dans la racine du projet
             root = Path(__file__).parent.parent
             matches = glob.glob(str(root / "*firebase-adminsdk*.json"))
             if not matches:

@@ -30,11 +30,9 @@ def handle_missing(df: pd.DataFrame) -> pd.DataFrame:
     missing = df.isnull().sum()
     if missing.any():
         print(f"  [cleaner] Valeurs manquantes :\n{missing[missing > 0]}")
-        # Imputation médiane pour les numériques
         for col in df.select_dtypes(include="number").columns:
             if df[col].isnull().any():
                 df[col] = df[col].fillna(df[col].median())
-        # Imputation mode pour les catégorielles
         for col in df.select_dtypes(exclude="number").columns:
             if df[col].isnull().any():
                 df[col] = df[col].fillna(df[col].mode()[0])
