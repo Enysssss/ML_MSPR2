@@ -2,6 +2,8 @@
 Service Firebase Firestore — logging des prédictions et feedback utilisateur.
 """
 import os
+import json
+import base64
 from pathlib import Path
 from datetime import datetime, timezone
 
@@ -17,11 +19,19 @@ def get_db():
         return _db
 
     if not firebase_admin._apps:
-        cred_path = os.environ.get(
-            "FIREBASE_CREDENTIALS",
-            str(Path(__file__).parent.parent / "mlmspr2-firebase-adminsdk-fbsvc-9503215706.json"),
-        )
-        cred = credentials.Certificate(cred_path)
+        # Priorité 1 : variable base64 (Railway / CI)
+        b64 = os.environ.get("FIREBASE_CREDENTIALS_B64")
+        if b64:
+            cred_dict = json.loads(base64.b64decode(b64).decode("utf-8"))
+            cred = credentials.Certificate(cred_dict)
+        else:
+            # Priorité 2 : chemin fichier (local)
+            cred_path = os.environ.get(
+                "FIREBASE_CREDENTIALS",
+                str(Path(__file__).parent.parent / "mlmspr2-firebase-adminsdk-fbsvc-9503215706.json"),
+            )
+            cred = credentials.Certificate(cred_path)
+
         firebase_admin.initialize_app(cred)
 
     _db = firestore.client()
