@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from typing import Union
 
-from authorization import Authorization
+from app.authorization import Authorization
 
 from app.schemas import (
     RecommendInput, RecommendOutput,
