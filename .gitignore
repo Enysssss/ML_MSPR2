@@ -4,9 +4,6 @@
 # Variables d'environnement (contient les credentials)
 .env
 
-# Modèles entraines
-ml/models/*.pkl
-
 # Donnees generees
 ml/data/processed/
 
