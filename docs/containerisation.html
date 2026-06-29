@@ -1,0 +1,898 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Conteneurisation — HealthAI Coach</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --surface2: #22263a;
+      --border: #2e3250;
+      --accent: #6c8aff;
+      --accent2: #a78bfa;
+      --green: #34d399;
+      --red: #f87171;
+      --yellow: #fbbf24;
+      --text: #e2e8f0;
+      --text-muted: #8892b0;
+      --code-bg: #141720;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.7;
+    }
+
+    /* ── NAV ── */
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(15,17,23,0.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 0 2rem;
+      display: flex;
+      align-items: center;
+      gap: 2rem;
+      height: 56px;
+    }
+    nav .logo {
+      font-weight: 700;
+      font-size: 1rem;
+      color: var(--accent);
+      white-space: nowrap;
+    }
+    nav a {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.85rem;
+      transition: color .2s;
+      white-space: nowrap;
+    }
+    nav a:hover { color: var(--text); }
+
+    /* ── LAYOUT ── */
+    .page { max-width: 960px; margin: 0 auto; padding: 3rem 2rem 6rem; }
+
+    /* ── HERO ── */
+    .hero {
+      text-align: center;
+      padding: 4rem 0 3rem;
+    }
+    .hero-badge {
+      display: inline-block;
+      background: linear-gradient(135deg, #1e2a5e, #2e1a5e);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: .3rem 1rem;
+      font-size: .78rem;
+      color: var(--accent2);
+      margin-bottom: 1.2rem;
+      letter-spacing: .05em;
+      text-transform: uppercase;
+    }
+    .hero h1 {
+      font-size: 2.6rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, #fff 40%, var(--accent));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: .8rem;
+    }
+    .hero p {
+      color: var(--text-muted);
+      font-size: 1.05rem;
+      max-width: 560px;
+      margin: 0 auto;
+    }
+
+    /* ── SECTION ── */
+    section { margin-top: 4rem; }
+    section h2 {
+      font-size: 1.45rem;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 1.2rem;
+      padding-bottom: .6rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: .6rem;
+    }
+    section h2 .num {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px; height: 28px;
+      border-radius: 6px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      font-size: .8rem;
+      font-weight: 600;
+      color: var(--accent);
+      flex-shrink: 0;
+    }
+    section h3 {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--accent2);
+      margin: 1.6rem 0 .6rem;
+    }
+    section p { color: var(--text-muted); margin-bottom: .8rem; }
+    section p strong { color: var(--text); }
+
+    /* ── DIAGRAM ── */
+    .diagram {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.4rem 1.6rem;
+      font-family: 'Cascadia Code', 'Fira Code', monospace;
+      font-size: .82rem;
+      color: #7dd3fc;
+      overflow-x: auto;
+      white-space: pre;
+      line-height: 1.5;
+      margin: 1rem 0;
+    }
+
+    /* ── CODE BLOCK ── */
+    .code-block {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      margin: 1rem 0;
+    }
+    .code-block .code-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: .5rem 1rem;
+      background: var(--surface2);
+      border-bottom: 1px solid var(--border);
+      font-size: .75rem;
+      color: var(--text-muted);
+    }
+    .code-block .code-header .dots { display: flex; gap: 6px; }
+    .code-block .code-header .dot { width: 10px; height: 10px; border-radius: 50%; }
+    .code-block .code-header .dot.r { background: #f87171; }
+    .code-block .code-header .dot.y { background: #fbbf24; }
+    .code-block .code-header .dot.g { background: #34d399; }
+    .code-block pre {
+      padding: 1.2rem 1.4rem;
+      overflow-x: auto;
+      font-family: 'Cascadia Code', 'Fira Code', monospace;
+      font-size: .82rem;
+      line-height: 1.6;
+    }
+    .code-block pre .c  { color: #4b5563; }
+    .code-block pre .k  { color: #c084fc; }
+    .code-block pre .s  { color: #86efac; }
+    .code-block pre .n  { color: #93c5fd; }
+    .code-block pre .m  { color: #fda4af; }
+    .code-block pre .ok { color: #34d399; }
+    .code-block pre .bad{ color: #f87171; }
+
+    /* ── TABLE ── */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0;
+      font-size: .88rem;
+    }
+    th {
+      background: var(--surface2);
+      color: var(--text-muted);
+      font-weight: 600;
+      text-align: left;
+      padding: .7rem 1rem;
+      border: 1px solid var(--border);
+      font-size: .78rem;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+    }
+    td {
+      padding: .65rem 1rem;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+    }
+    td strong { color: var(--text); }
+    tr:hover td { background: var(--surface); }
+    td code {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: .1rem .4rem;
+      font-size: .8rem;
+      font-family: 'Cascadia Code', 'Fira Code', monospace;
+      color: var(--accent);
+    }
+
+    /* ── CARDS ── */
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      margin: 1rem 0;
+    }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.2rem;
+    }
+    .card .card-label {
+      font-size: .72rem;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: var(--text-muted);
+      margin-bottom: .4rem;
+    }
+    .card .card-value {
+      font-size: 1.6rem;
+      font-weight: 800;
+      color: #fff;
+    }
+    .card .card-value.green { color: var(--green); }
+    .card .card-value.red   { color: var(--red); }
+    .card .card-value.yellow{ color: var(--yellow); }
+    .card .card-sub {
+      font-size: .78rem;
+      color: var(--text-muted);
+      margin-top: .3rem;
+    }
+
+    /* ── BEFORE / AFTER ── */
+    .before-after {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin: 1rem 0;
+    }
+    .ba-block {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.2rem;
+    }
+    .ba-block.before { border-color: #7f1d1d; }
+    .ba-block.after  { border-color: #14532d; }
+    .ba-title {
+      font-size: .72rem;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      font-weight: 700;
+      margin-bottom: .8rem;
+    }
+    .ba-block.before .ba-title { color: var(--red); }
+    .ba-block.after  .ba-title { color: var(--green); }
+    .ba-block ul { list-style: none; }
+    .ba-block li {
+      font-size: .85rem;
+      color: var(--text-muted);
+      padding: .25rem 0;
+      display: flex;
+      align-items: flex-start;
+      gap: .5rem;
+    }
+    .ba-block li::before { content: "•"; flex-shrink: 0; }
+    .ba-block.before li::before { color: var(--red); }
+    .ba-block.after  li::before { color: var(--green); }
+
+    /* ── TIMELINE ── */
+    .timeline { margin: 1.2rem 0; }
+    .tl-item {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: .5rem;
+    }
+    .tl-dot {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      flex-shrink: 0;
+    }
+    .tl-dot .dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: var(--accent);
+      margin-top: .5rem;
+    }
+    .tl-dot .line {
+      width: 2px;
+      flex: 1;
+      background: var(--border);
+      margin-top: 4px;
+    }
+    .tl-item:last-child .tl-dot .line { display: none; }
+    .tl-content {
+      padding-bottom: 1rem;
+    }
+    .tl-content .tl-title {
+      font-size: .9rem;
+      font-weight: 600;
+      color: var(--text);
+    }
+    .tl-content .tl-desc {
+      font-size: .82rem;
+      color: var(--text-muted);
+    }
+    .tl-content .tl-time {
+      font-size: .75rem;
+      color: var(--accent);
+      font-family: monospace;
+    }
+
+    /* ── BADGE ── */
+    .badge {
+      display: inline-block;
+      border-radius: 999px;
+      padding: .15rem .6rem;
+      font-size: .72rem;
+      font-weight: 600;
+    }
+    .badge.green { background: #052e16; color: var(--green); }
+    .badge.red   { background: #450a0a; color: var(--red); }
+    .badge.blue  { background: #172554; color: #93c5fd; }
+    .badge.gray  { background: var(--surface2); color: var(--text-muted); }
+
+    /* ── CHECKLIST ── */
+    .checklist { list-style: none; margin: 1rem 0; }
+    .checklist li {
+      display: flex;
+      align-items: flex-start;
+      gap: .7rem;
+      padding: .4rem 0;
+      border-bottom: 1px solid var(--border);
+      font-size: .88rem;
+      color: var(--text-muted);
+    }
+    .checklist li:last-child { border-bottom: none; }
+    .checklist li .check {
+      width: 18px; height: 18px;
+      border: 2px solid var(--border);
+      border-radius: 4px;
+      flex-shrink: 0;
+      margin-top: .1rem;
+    }
+
+    /* ── CALLOUT ── */
+    .callout {
+      border-left: 3px solid var(--accent);
+      background: var(--surface);
+      border-radius: 0 8px 8px 0;
+      padding: .9rem 1.2rem;
+      margin: 1rem 0;
+      font-size: .88rem;
+      color: var(--text-muted);
+    }
+    .callout strong { color: var(--text); }
+
+    /* ── TOC ── */
+    .toc {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.4rem 1.6rem;
+      margin: 2rem 0;
+    }
+    .toc h4 {
+      font-size: .78rem;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: var(--text-muted);
+      margin-bottom: 1rem;
+    }
+    .toc ol {
+      list-style: none;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: .3rem .8rem;
+      counter-reset: toc;
+    }
+    .toc ol li::before {
+      counter-increment: toc;
+      content: counter(toc) ". ";
+      color: var(--accent);
+      font-size: .8rem;
+    }
+    .toc a {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: .85rem;
+      transition: color .2s;
+    }
+    .toc a:hover { color: var(--text); }
+
+    @media (max-width: 640px) {
+      .hero h1 { font-size: 1.8rem; }
+      .before-after { grid-template-columns: 1fr; }
+      .toc ol { grid-template-columns: 1fr; }
+      nav a { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <span class="logo">HealthAI Coach</span>
+  <a href="#dockerfile">Dockerfile</a>
+  <a href="#healthcheck">Health Check</a>
+  <a href="#disponibilite">Disponibilité</a>
+  <a href="#probleme">Problème résolu</a>
+  <a href="#modele">Modèle pré-entraîné</a>
+  <a href="#lifecycle">Cycle de vie</a>
+  <a href="#checklist">Checklist</a>
+</nav>
+
+<div class="page">
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero-badge">Documentation technique</div>
+    <h1>Conteneurisation</h1>
+    <p>Architecture Docker, health check, disponibilité de l'API et gestion du modèle ML en production.</p>
+  </div>
+
+  <!-- TOC -->
+  <div class="toc">
+    <h4>Sommaire</h4>
+    <ol>
+      <li><a href="#vue-ensemble">Vue d'ensemble</a></li>
+      <li><a href="#dockerfile">Dockerfile expliqué</a></li>
+      <li><a href="#healthcheck">Health Check</a></li>
+      <li><a href="#disponibilite">Disponibilité de l'API</a></li>
+      <li><a href="#probleme">Problème résolu</a></li>
+      <li><a href="#modele">Pourquoi pré-entraîner</a></li>
+      <li><a href="#lifecycle">Cycle de vie</a></li>
+      <li><a href="#envvars">Variables d'environnement</a></li>
+      <li><a href="#checklist">Checklist de déploiement</a></li>
+    </ol>
+  </div>
+
+  <!-- 1. VUE D'ENSEMBLE -->
+  <section id="vue-ensemble">
+    <h2><span class="num">1</span> Vue d'ensemble</h2>
+    <p>L'API HealthAI Coach est packagée dans un conteneur Docker <strong>autonome</strong> : une seule image contient le serveur FastAPI, le modèle ML pré-entraîné et toutes les dépendances Python. Elle est déployée sur Railway sans configuration système particulière.</p>
+
+    <div class="diagram">┌─────────────────────────────────────────────────────────┐
+│                    Conteneur Docker                      │
+│                                                          │
+│  ┌──────────────────┐      ┌────────────────────────┐   │
+│  │  FastAPI          │      │  ml/models/            │   │
+│  │  (uvicorn)        │─────▶│  model.pkl  (XGBoost)  │   │
+│  │  port 8000        │      │  encoder.pkl           │   │
+│  └──────────────────┘      └────────────────────────┘   │
+│           │                                              │
+│  ┌──────────────────┐                                    │
+│  │  GET /health     │ ◀──── HEALTHCHECK Docker           │
+│  └──────────────────┘                                    │
+└─────────────────────────────────────────────────────────┘
+          │                           │
+          ▼                           ▼
+  PostgreSQL (externe)         Firebase (externe, optionnel)</div>
+  </section>
+
+  <!-- 2. DOCKERFILE -->
+  <section id="dockerfile">
+    <h2><span class="num">2</span> Dockerfile expliqué</h2>
+
+    <div class="code-block">
+      <div class="code-header">
+        <div class="dots"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div></div>
+        <span>Dockerfile</span>
+      </div>
+      <pre><span class="k">FROM</span> <span class="s">python:3.11-slim</span>
+<span class="c"># Image légère (~50 MB). Contient uniquement Python 3.11 et les outils essentiels.</span>
+
+<span class="k">WORKDIR</span> <span class="s">/app</span>
+<span class="c"># Tous les fichiers seront dans /app. Évite les conflits de chemins.</span>
+
+<span class="k">COPY</span> requirements.txt .
+<span class="k">RUN</span> pip install --no-cache-dir -r requirements.txt
+<span class="c"># On copie requirements.txt EN PREMIER. Docker met en cache ce layer :
+# si le code change mais pas les dépendances, pip ne tourne pas à nouveau.</span>
+
+<span class="k">COPY</span> . .
+<span class="c"># Copie tout le projet, y compris ml/models/model.pkl (pré-entraîné).</span>
+
+<span class="k">ENV</span> PYTHONDONTWRITEBYTECODE=<span class="m">1</span> PYTHONUNBUFFERED=<span class="m">1</span>
+<span class="c"># PYTHONUNBUFFERED : logs visibles en temps réel dans Railway (sans buffer).</span>
+
+<span class="k">EXPOSE</span> <span class="m">8000</span>
+
+<span class="k">HEALTHCHECK</span> --interval=30s --timeout=10s --start-period=15s --retries=3 \
+    CMD python -c <span class="s">"import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"</span> || exit 1
+
+<span class="k">CMD</span> [<span class="s">"uvicorn"</span>, <span class="s">"app.main:app"</span>, <span class="s">"--host"</span>, <span class="s">"0.0.0.0"</span>, <span class="s">"--port"</span>, <span class="s">"8000"</span>]
+<span class="c"># --host 0.0.0.0 est obligatoire : sans ça, uvicorn n'écoute que sur localhost
+# interne et le conteneur est inaccessible depuis l'extérieur.</span></pre>
+    </div>
+
+    <h3>Optimisation du cache Docker</h3>
+    <p>L'ordre des instructions dans un Dockerfile a un impact direct sur la durée des builds. Docker invalide le cache d'un layer dès qu'un fichier copié a changé — tous les layers suivants sont recalculés.</p>
+
+    <table>
+      <tr><th>Layer</th><th>Se recalcule si…</th><th>Durée</th></tr>
+      <tr><td><code>pip install</code></td><td><code>requirements.txt</code> change</td><td>~90s</td></tr>
+      <tr><td><code>COPY . .</code></td><td>N'importe quel fichier change</td><td>&lt;5s</td></tr>
+    </table>
+
+    <p>En plaçant <code>pip install</code> <strong>avant</strong> <code>COPY . .</code>, les dépendances sont recalculées seulement si <code>requirements.txt</code> change — pas à chaque modification de code.</p>
+  </section>
+
+  <!-- 3. HEALTH CHECK -->
+  <section id="healthcheck">
+    <h2><span class="num">3</span> Health Check</h2>
+
+    <h3>Qu'est-ce qu'un health check ?</h3>
+    <p>C'est une vérification automatique que Docker lance <strong>à l'intérieur du conteneur</strong> à intervalle régulier. Si l'app ne répond plus, Docker marque le conteneur <code>unhealthy</code> — Railway peut alors le redémarrer automatiquement.</p>
+
+    <div class="code-block">
+      <div class="code-header">
+        <div class="dots"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div></div>
+        <span>Dockerfile — HEALTHCHECK</span>
+      </div>
+      <pre><span class="k">HEALTHCHECK</span> --interval=<span class="m">30s</span> --timeout=<span class="m">10s</span> --start-period=<span class="m">15s</span> --retries=<span class="m">3</span> \
+    CMD python -c <span class="s">"import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"</span> || exit 1</pre>
+    </div>
+
+    <table>
+      <tr><th>Paramètre</th><th>Valeur</th><th>Signification</th></tr>
+      <tr><td><code>--interval</code></td><td>30s</td><td>Vérifie toutes les 30 secondes</td></tr>
+      <tr><td><code>--timeout</code></td><td>10s</td><td>Pas de réponse en 10s → échec</td></tr>
+      <tr><td><code>--start-period</code></td><td>15s</td><td>Laisse 15s au conteneur pour démarrer avant de commencer les checks</td></tr>
+      <tr><td><code>--retries</code></td><td>3</td><td>3 échecs consécutifs → conteneur <code>unhealthy</code></td></tr>
+    </table>
+
+    <h3>La route <code>/health</code></h3>
+    <div class="code-block">
+      <div class="code-header">
+        <div class="dots"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div></div>
+        <span>app/main.py</span>
+      </div>
+      <pre><span class="n">@app</span>.get(<span class="s">"/health"</span>)
+<span class="k">def</span> <span class="n">health</span>():
+    <span class="k">return</span> {<span class="s">"status"</span>: <span class="s">"ok"</span>, <span class="s">"version"</span>: <span class="s">"2.0.0"</span>}</pre>
+    </div>
+    <p>Cette route répond <strong>instantanément</strong> sans accès à la base de données ni au modèle ML. Elle confirme simplement que le processus uvicorn est en vie et capable de traiter des requêtes.</p>
+
+    <h3>États du conteneur</h3>
+    <div class="diagram">  démarrage
+      │
+      ▼  (15s de grâce — start-period)
+  starting
+      │
+      ▼  GET /health répond 200 ?
+      ├── Oui ──▶  healthy ✅  (vérification toutes les 30s)
+      │
+      └── Non (3× consécutifs) ──▶  unhealthy ❌
+                                          │
+                                          ▼
+                                  Railway redémarre le conteneur</div>
+  </section>
+
+  <!-- 4. DISPONIBILITE -->
+  <section id="disponibilite">
+    <h2><span class="num">4</span> Disponibilité de l'API</h2>
+
+    <h3>Chargement du modèle au démarrage</h3>
+    <p>Le modèle ML est chargé <strong>une seule fois au démarrage</strong> via un pattern Singleton. L'instance est créée au niveau module dans <code>main.py</code>, donc au moment où uvicorn importe l'application.</p>
+
+    <div class="code-block">
+      <div class="code-header">
+        <div class="dots"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div></div>
+        <span>app/service.py</span>
+      </div>
+      <pre><span class="k">class</span> <span class="n">FitnessService</span>:
+    _instance = <span class="k">None</span>
+
+    <span class="k">def</span> <span class="n">__new__</span>(cls):
+        <span class="k">if</span> cls._instance <span class="k">is None</span>:
+            cls._instance = <span class="n">super</span>().__new__(cls)
+            cls._instance._model   = joblib.load(MODELS_DIR / <span class="s">"model.pkl"</span>)
+            cls._instance._encoder = joblib.load(MODELS_DIR / <span class="s">"encoder.pkl"</span>)
+        <span class="k">return</span> cls._instance
+<span class="c">
+# app/main.py — exécuté au démarrage d'uvicorn
+</span>service = <span class="n">FitnessService</span>()  <span class="c"># ← modèle chargé ici, une seule fois</span></pre>
+    </div>
+
+    <div class="callout"><strong>Conséquence :</strong> la première requête <code>/recommend</code> répond aussi vite que les suivantes. Il n'y a aucun "cold start" par requête — le modèle est déjà en mémoire.</div>
+
+    <h3>Temps de démarrage</h3>
+    <div class="cards">
+      <div class="card">
+        <div class="card-label">Import modules Python</div>
+        <div class="card-value green">~2s</div>
+      </div>
+      <div class="card">
+        <div class="card-label">Chargement model.pkl (747 KB)</div>
+        <div class="card-value green">~1s</div>
+      </div>
+      <div class="card">
+        <div class="card-label">Chargement encoder.pkl (608 B)</div>
+        <div class="card-value green">&lt;0.1s</div>
+      </div>
+      <div class="card">
+        <div class="card-label">Uvicorn prêt — total</div>
+        <div class="card-value green">~3-4s</div>
+      </div>
+    </div>
+    <p>Le <code>start-period</code> de 15s dans le HEALTHCHECK est largement suffisant.</p>
+
+    <h3>Dépendances par route</h3>
+    <table>
+      <tr><th>Route</th><th>Dépendance</th><th>Si indisponible</th></tr>
+      <tr><td><code>GET /health</code></td><td><span class="badge green">Aucune</span></td><td>Toujours disponible</td></tr>
+      <tr><td><code>POST /recommend</code></td><td><span class="badge blue">PostgreSQL</span> <span class="badge gray">Firebase</span></td><td>500 si DB, Firebase échoue silencieusement</td></tr>
+      <tr><td><code>POST /nutrition/meals</code></td><td><span class="badge blue">PostgreSQL</span></td><td>500 si DB indisponible</td></tr>
+      <tr><td><code>POST /nutrition/calories</code></td><td><span class="badge green">Aucune</span></td><td>Toujours disponible (calcul pur)</td></tr>
+      <tr><td><code>POST /sessions/exercises</code></td><td><span class="badge blue">PostgreSQL</span></td><td>500 si DB indisponible</td></tr>
+      <tr><td><code>POST /logs/feedback</code></td><td><span class="badge gray">Firebase</span></td><td>503 avec message explicite</td></tr>
+      <tr><td><code>GET /logs/comparison</code></td><td><span class="badge gray">Firebase</span></td><td>503 avec message explicite</td></tr>
+    </table>
+  </section>
+
+  <!-- 5. PROBLEME -->
+  <section id="probleme">
+    <h2><span class="num">5</span> Problème résolu — le training au build</h2>
+
+    <h3>L'ancien Dockerfile</h3>
+    <div class="code-block">
+      <div class="code-header">
+        <div class="dots"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div></div>
+        <span>Dockerfile — AVANT (problématique)</span>
+      </div>
+      <pre><span class="bad"># Ces deux lignes tournaient à chaque docker build</span>
+<span class="k">RUN</span> python ml/data/generate_dataset.py &amp;&amp; \
+    python ml/src/training/train.py</pre>
+    </div>
+
+    <h3>Pourquoi c'était lent</h3>
+    <p>Le script <code>train.py</code> compare 3 algorithmes avec une recherche d'hyperparamètres exhaustive :</p>
+
+    <div class="code-block">
+      <div class="code-header">
+        <div class="dots"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div></div>
+        <span>ml/src/training/train.py</span>
+      </div>
+      <pre>RandomizedSearchCV(
+    estimator=pipeline,
+    param_distributions=param_grid,
+    n_iter=<span class="m">50</span>,   <span class="c"># 50 combinaisons testées par modèle</span>
+    cv=<span class="m">5</span>,        <span class="c"># validation croisée 5 folds</span>
+    scoring=<span class="s">"f1_macro"</span>,
+)</pre>
+    </div>
+
+    <div class="cards">
+      <div class="card">
+        <div class="card-label">Entraînements par modèle</div>
+        <div class="card-value yellow">250</div>
+        <div class="card-sub">50 combinaisons × 5 folds</div>
+      </div>
+      <div class="card">
+        <div class="card-label">Modèles comparés</div>
+        <div class="card-value yellow">3</div>
+        <div class="card-sub">Random Forest, Gradient Boosting, XGBoost</div>
+      </div>
+      <div class="card">
+        <div class="card-label">Entraînements totaux</div>
+        <div class="card-value red">750</div>
+        <div class="card-sub">À chaque docker build</div>
+      </div>
+      <div class="card">
+        <div class="card-label">Durée du build</div>
+        <div class="card-value red">~15 min</div>
+        <div class="card-sub">À chaque git push</div>
+      </div>
+    </div>
+
+    <h3>Impact sur Railway</h3>
+    <p>À chaque <code>git push</code>, Railway reconstruisait l'image Docker en entier. Le training retournait systématiquement, bloquant le déploiement pendant <strong>15 minutes</strong> — même si le code ML n'avait pas changé.</p>
+
+    <h3>Avant / Après</h3>
+    <div class="before-after">
+      <div class="ba-block before">
+        <div class="ba-title">Avant</div>
+        <ul>
+          <li>Build : ~15 min (training inclus)</li>
+          <li>Déploiement disponible : ~18 min</li>
+          <li>Training à chaque deploy, même inutile</li>
+          <li>Résultat du modèle non garanti (seed aléatoire)</li>
+          <li>Pas de HEALTHCHECK</li>
+        </ul>
+      </div>
+      <div class="ba-block after">
+        <div class="ba-title">Après</div>
+        <ul>
+          <li>Build : ~2 min (pip install seulement)</li>
+          <li>Déploiement disponible : ~3 min</li>
+          <li>Modèle chargé depuis git, stable</li>
+          <li>Reproductible — même fichier commité</li>
+          <li>HEALTHCHECK actif sur <code>/health</code></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- 6. MODELE -->
+  <section id="modele">
+    <h2><span class="num">6</span> Pourquoi pré-entraîner le modèle</h2>
+
+    <h3>Le modèle ne change pas à chaque déploiement</h3>
+    <p>Le modèle apprend sur des <strong>données synthétiques générées avec une seed fixe</strong> (<code>seed=42</code>). Ces données ne changent pas entre les déploiements — re-entraîner produirait exactement le même résultat pour un coût de 15 minutes.</p>
+
+    <h3>Modèle sélectionné</h3>
+    <div class="cards">
+      <div class="card">
+        <div class="card-label">Algorithme</div>
+        <div class="card-value" style="font-size:1.1rem">XGBoost</div>
+      </div>
+      <div class="card">
+        <div class="card-label">F1-macro</div>
+        <div class="card-value green">0.86</div>
+      </div>
+      <div class="card">
+        <div class="card-label">Accuracy</div>
+        <div class="card-value green">87%</div>
+      </div>
+      <div class="card">
+        <div class="card-label">CV F1 (±)</div>
+        <div class="card-value green">0.84 ±0.008</div>
+      </div>
+    </div>
+
+    <h3>Avantages du modèle commité dans git</h3>
+    <table>
+      <tr><th>Avantage</th><th>Explication</th></tr>
+      <tr><td><strong>Reproductibilité</strong></td><td>Local, Railway, CI — tous utilisent exactement le même modèle</td></tr>
+      <tr><td><strong>Traçabilité</strong></td><td><code>git log ml/models/model.pkl</code> montre quand et pourquoi le modèle a changé</td></tr>
+      <tr><td><strong>Rapidité</strong></td><td>Builds de ~2 min au lieu de ~15 min</td></tr>
+      <tr><td><strong>Stabilité</strong></td><td>Aucun risque qu'un deploy change silencieusement les prédictions</td></tr>
+    </table>
+
+    <h3>Quand faut-il re-entraîner ?</h3>
+    <p>Re-entraîner est nécessaire uniquement dans ces cas :</p>
+    <table>
+      <tr><th>Cas</th><th>Fichier concerné</th></tr>
+      <tr><td>Les données d'entraînement changent</td><td><code>ml/data/generate_dataset.py</code></td></tr>
+      <tr><td>L'algorithme ou les hyperparamètres changent</td><td><code>ml/src/training/train.py</code></td></tr>
+      <tr><td>Les features changent</td><td><code>ml/src/preprocessing/engineer.py</code></td></tr>
+      <tr><td>Un bug dans le preprocessing est corrigé</td><td><code>ml/src/preprocessing/cleaner.py</code></td></tr>
+    </table>
+
+    <div class="code-block">
+      <div class="code-header">
+        <div class="dots"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div></div>
+        <span>Procédure de re-entraînement</span>
+      </div>
+      <pre><span class="c"># 1. En local, dans le venv</span>
+python ml/data/generate_dataset.py
+python ml/src/training/train.py
+
+<span class="c"># 2. Vérifier les métriques dans les logs (F1-macro, accuracy)</span>
+
+<span class="c"># 3. Committer les nouveaux modèles</span>
+git add ml/models/model.pkl ml/models/encoder.pkl
+git commit -m <span class="s">"chore: re-entraînement modèle — [raison]"</span>
+git push</pre>
+    </div>
+  </section>
+
+  <!-- 7. LIFECYCLE -->
+  <section id="lifecycle">
+    <h2><span class="num">7</span> Cycle de vie du conteneur</h2>
+
+    <div class="timeline">
+      <div class="tl-item">
+        <div class="tl-dot"><div class="dot"></div><div class="line"></div></div>
+        <div class="tl-content">
+          <div class="tl-title">git push origin main</div>
+          <div class="tl-desc">Railway détecte le nouveau commit sur la branche main</div>
+        </div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-dot"><div class="dot"></div><div class="line"></div></div>
+        <div class="tl-content">
+          <div class="tl-title">docker build (~2 min)</div>
+          <div class="tl-desc">pip install les dépendances · COPY du code et de model.pkl · aucun training</div>
+          <div class="tl-time">~2 minutes</div>
+        </div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-dot"><div class="dot"></div><div class="line"></div></div>
+        <div class="tl-content">
+          <div class="tl-title">docker run → uvicorn démarre</div>
+          <div class="tl-desc">Import de app.main → FitnessService() → chargement de model.pkl + encoder.pkl</div>
+          <div class="tl-time">~3-4 secondes</div>
+        </div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-dot"><div class="dot"></div><div class="line"></div></div>
+        <div class="tl-content">
+          <div class="tl-title">start-period (15s)</div>
+          <div class="tl-desc">Docker attend avant de commencer les health checks — le conteneur peut démarrer sans être immédiatement marqué unhealthy</div>
+        </div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-dot"><div class="dot"></div><div class="line"></div></div>
+        <div class="tl-content">
+          <div class="tl-title">HEALTHCHECK — GET /health → 200</div>
+          <div class="tl-desc">Conteneur marqué <strong>healthy</strong> · Railway redirige le trafic vers ce conteneur</div>
+        </div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-dot"><div class="dot"></div><div class="line"></div></div>
+        <div class="tl-content">
+          <div class="tl-title">Health checks toutes les 30s</div>
+          <div class="tl-desc">Surveillance continue · 3 échecs consécutifs → redémarrage automatique du conteneur</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 8. ENV VARS -->
+  <section id="envvars">
+    <h2><span class="num">8</span> Variables d'environnement</h2>
+    <p>À configurer dans les paramètres Railway du projet.</p>
+    <table>
+      <tr><th>Variable</th><th>Obligatoire</th><th>Description</th></tr>
+      <tr>
+        <td><code>DATABASE_URL</code></td>
+        <td><span class="badge red">Oui</span></td>
+        <td>URL PostgreSQL — <code>postgresql://user:pass@host:5432/db</code></td>
+      </tr>
+      <tr>
+        <td><code>FIREBASE_CREDENTIALS_B64</code></td>
+        <td><span class="badge gray">Non</span></td>
+        <td>Credentials Firebase encodés en base64 (pour les logs de prédictions)</td>
+      </tr>
+      <tr>
+        <td><code>FIREBASE_CREDENTIALS</code></td>
+        <td><span class="badge gray">Non</span></td>
+        <td>Chemin vers le fichier JSON Firebase (alternative au B64)</td>
+      </tr>
+    </table>
+    <div class="callout">Sans <strong>DATABASE_URL</strong>, les routes <code>/nutrition/meals</code> et <code>/sessions/exercises</code> retournent des erreurs 500. Les routes <code>/health</code> et <code>/nutrition/calories</code> fonctionnent toujours. Sans Firebase, <code>/logs/*</code> retourne 503 mais le reste de l'API est intact.</div>
+  </section>
+
+  <!-- 9. CHECKLIST -->
+  <section id="checklist">
+    <h2><span class="num">9</span> Checklist de déploiement</h2>
+
+    <h3>Déploiement normal (pas de changement de modèle)</h3>
+    <ul class="checklist">
+      <li><div class="check"></div><code>git push origin main</code></li>
+      <li><div class="check"></div>Vérifier les logs Railway — build ~2 min, démarrage ~15s</li>
+      <li><div class="check"></div>Tester <code>GET /health</code> → <code>{"status": "ok"}</code></li>
+    </ul>
+
+    <h3>Déploiement avec nouveau modèle</h3>
+    <ul class="checklist">
+      <li><div class="check"></div>Modifier les données ou le code ML si nécessaire</li>
+      <li><div class="check"></div>Activer le venv : <code>source .venv/bin/activate</code></li>
+      <li><div class="check"></div><code>python ml/data/generate_dataset.py</code></li>
+      <li><div class="check"></div><code>python ml/src/training/train.py</code></li>
+      <li><div class="check"></div>Vérifier les métriques dans les logs (F1-macro ≥ 0.84, accuracy ≥ 86%)</li>
+      <li><div class="check"></div><code>git add ml/models/model.pkl ml/models/encoder.pkl</code></li>
+      <li><div class="check"></div><code>git commit -m "chore: re-entraînement modèle — [raison]"</code></li>
+      <li><div class="check"></div><code>git push origin main</code></li>
+      <li><div class="check"></div>Vérifier les logs Railway</li>
+      <li><div class="check"></div>Tester <code>POST /recommend</code> avec un cas de test connu</li>
+    </ul>
+  </section>
+
+</div>
+</body>
+</html>

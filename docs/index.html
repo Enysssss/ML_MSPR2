@@ -129,6 +129,11 @@
       padding: 10px 18px; border-radius: 8px; font-size: .85rem;
       font-weight: 600; text-align: center;
     }
+    .pipe-node-green {
+      background: #059669; color: white;
+      padding: 10px 18px; border-radius: 8px; font-size: .85rem;
+      font-weight: 600; text-align: center;
+    }
     .pipe-arrow { padding: 0 8px; color: var(--muted); font-size: 1.2rem; }
     .qa-item { border: 1px solid var(--border); border-radius: 10px; margin-bottom: 16px; overflow: hidden; }
     .qa-q {
@@ -166,6 +171,20 @@
     .img-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin: 20px 0; }
     @media (max-width: 900px) { .img-grid, .img-grid-3 { grid-template-columns: 1fr; } }
     @media (max-width: 768px) { nav { display: none; } main { margin-left: 0; padding: 20px; } }
+    .db-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin: 20px 0; }
+    .db-card {
+      border: 2px solid var(--border); border-radius: 12px; padding: 20px 24px;
+    }
+    .db-card.postgres { border-color: #3b82f6; }
+    .db-card.firebase { border-color: #f59e0b; }
+    .db-card h4 { margin-bottom: 12px; }
+    .route-table td code { font-size: .82rem; }
+    .route-method {
+      display: inline-block; padding: 2px 8px; border-radius: 4px;
+      font-size: .75rem; font-weight: 700; font-family: monospace;
+    }
+    .method-post { background: #fef3c7; color: #92400e; }
+    .method-get  { background: #d1fae5; color: #065f46; }
   </style>
 </head>
 <body>
@@ -181,17 +200,17 @@
     <li><a href="#architecture">Architecture globale</a></li>
 
     <li class="section-title">Pipeline ML — Étape par étape</li>
-    <li><a href="#eda">EDA — Analyse exploratoire</a></li>
     <li><a href="#dataset">Dataset — Conception</a></li>
+    <li><a href="#eda">EDA — Analyse exploratoire</a></li>
     <li><a href="#cleaning">Nettoyage</a></li>
     <li><a href="#features">Feature Engineering</a></li>
     <li><a href="#preprocessing">Préprocessing sklearn</a></li>
-    <li><a href="#model">Choix des modèles</a></li>
+    <li><a href="#model">Comparaison des modèles</a></li>
     <li><a href="#randomsearch">RandomizedSearchCV</a></li>
     <li><a href="#mlflow">MLflow — Tracking</a></li>
 
     <li class="section-title">Évaluation & Résultats</li>
-    <li><a href="#metrics">Métriques</a></li>
+    <li><a href="#metrics">Métriques & Validation croisée</a></li>
     <li><a href="#confusion">Matrice de confusion</a></li>
     <li><a href="#report">Classification report</a></li>
     <li><a href="#learning">Learning curves</a></li>
@@ -199,8 +218,11 @@
     <li><a href="#interpretation">Interprétation des résultats</a></li>
 
     <li class="section-title">API & Déploiement</li>
-    <li><a href="#api">API FastAPI</a></li>
-    <li><a href="#bdd">Intégration BDD ETL</a></li>
+    <li><a href="#api">API FastAPI — Routes complètes</a></li>
+    <li><a href="#bdd">Base de données PostgreSQL</a></li>
+    <li><a href="#firebase">Firebase Firestore — NoSQL</a></li>
+    <li><a href="#accessibility">Accessibilité & Adaptation</a></li>
+    <li><a href="#feedback">Amélioration continue</a></li>
 
     <li class="section-title">Soutenance</li>
     <li><a href="#jury">Questions du jury</a></li>
@@ -218,12 +240,13 @@
     <div class="badge-row">
       <span class="badge">Python 3.11</span>
       <span class="badge">scikit-learn</span>
-      <span class="badge">XGBoost ★</span>
+      <span class="badge">XGBoost</span>
       <span class="badge">FastAPI</span>
       <span class="badge">MLflow</span>
-      <span class="badge">PostgreSQL ETL</span>
-      <span class="badge">F1-macro 86.1%</span>
-      <span class="badge">AUC-ROC 94.5%</span>
+      <span class="badge">PostgreSQL Railway</span>
+      <span class="badge">Firebase Firestore</span>
+      <span class="badge">F1-macro 86.3%</span>
+      <span class="badge">Accuracy 87.2%</span>
     </div>
   </div>
 
@@ -232,15 +255,15 @@
     <h2>Présentation du projet</h2>
 
     <p>
-      Le projet HealthAI Coach répond à une question concrète : lorsqu'un adhérent s'inscrit
-      dans une salle de sport, il donne des informations basiques sur lui-même — son âge, son poids,
+      Le projet HealthAI Coach répond à une question concrète : lorsqu'un utilisateur s'inscrit
+      sur une application fitness, il fournit des informations basiques — son âge, son poids,
       sa taille, son niveau d'activité physique. Est-ce qu'on peut, uniquement avec ces données,
       lui recommander automatiquement le programme d'entraînement le plus adapté à sa situation,
       sans intervention humaine ?
     </p>
     <p>
       L'idée est de créer un moteur de recommandation intelligent qui va classifier chaque
-      nouvel adhérent parmi 6 profils fitness distincts, chacun correspondant à un objectif
+      nouvel utilisateur parmi 6 profils fitness distincts, chacun correspondant à un objectif
       et un programme différent. C'est un problème de <strong>classification supervisée multi-classes</strong>.
     </p>
 
@@ -252,113 +275,49 @@
         <div class="val">6</div><div class="lbl">profils (classes)</div>
       </div>
       <div class="metric-card">
-        <div class="val" style="color:#0e9f6e">86.1%</div><div class="lbl">F1-macro (XGBoost)</div>
+        <div class="val" style="color:#0e9f6e">86.3%</div><div class="lbl">F1-macro (5-fold CV)</div>
       </div>
       <div class="metric-card">
-        <div class="val" style="color:#0e9f6e">94.5%</div><div class="lbl">AUC-ROC</div>
+        <div class="val" style="color:#0e9f6e">87.2%</div><div class="lbl">Accuracy test set</div>
       </div>
     </div>
 
-    <h3>Les 6 profils fitness — expliqués en détail</h3>
-    <p>Ces 6 profils correspondent aux 6 situations les plus courantes qu'on rencontre dans une salle
-    de sport. Ils ont été définis à partir des recommandations officielles de l'ACSM (American College
-    of Sports Medicine, 2022), l'organisme de référence mondial en médecine du sport.</p>
+    <h3>Les 6 profils fitness</h3>
 
     <div class="profile-card">
       <h4>1. Perte de poids — Débutant</h4>
       <div class="target">BMI ≥ 27.5 ou % graisse élevé + jamais fait de sport</div>
-      <p>
-        Ce profil correspond à une personne en surpoids ou ayant un taux de masse grasse trop élevé,
-        qui n'a pas ou peu d'expérience sportive. C'est la combinaison la plus délicate à gérer,
-        car le corps n'est pas habitué à l'effort et les articulations doivent s'adapter progressivement.
-        Le programme recommandé mise donc sur du cardio à intensité modérée — marche rapide, vélo,
-        elliptique — à une fréquence cardiaque de 55 à 65% du maximum (ce qu'on appelle la zone 2,
-        qui brûle prioritairement les graisses). On ajoute du renforcement musculaire léger pour
-        préserver la masse musculaire pendant la perte de poids. L'objectif réaliste est une perte
-        de 0.5 kg par semaine sur 8 à 12 semaines.
-      </p>
+      <p>Programme cardio modéré (zone 2, 55–65% FCmax) + renforcement léger. Objectif : perte de 0.5 kg/semaine sur 8 à 12 semaines. Progression douce — le corps n'est pas habitué à l'effort.</p>
     </div>
 
     <div class="profile-card" style="border-left-color:#0e9f6e">
       <h4>2. Perte de poids — Confirmé</h4>
       <div class="target" style="background:#f0fdf4;color:#065f46">BMI ≥ 27.5 ou % graisse élevé + sportif expérimenté</div>
-      <p>
-        Ce profil concerne une personne qui a déjà une bonne pratique sportive, mais qui a pris
-        du poids (prise de masse qui a dévié, sédentarité récente, changement de vie…).
-        Son corps est capable de supporter des intensités élevées, donc le programme peut être
-        beaucoup plus exigeant. On utilise le HIIT (High Intensity Interval Training) : des alternances
-        d'effort intense et de récupération courte qui brûlent beaucoup de calories en peu de temps
-        et créent un effet afterburn (le corps continue à brûler des calories après l'effort).
-        On associe de la musculation pour préserver et développer la masse musculaire pendant
-        la phase de sèche. L'objectif est un remodelage corporel — perdre de la graisse
-        tout en maintenant ou augmentant le muscle.
-      </p>
+      <p>HIIT + musculation pour un remodelage corporel (perdre du gras, conserver le muscle). Le corps peut supporter des intensités élevées. Effet afterburn exploité pour brûler plus de calories après la séance.</p>
     </div>
 
     <div class="profile-card" style="border-left-color:#7c3aed">
       <h4>3. Prise de masse — Débutant</h4>
       <div class="target" style="background:#f5f3ff;color:#5b21b6">BMI &lt; 22.5 ou % graisse bas + jamais fait de sport</div>
-      <p>
-        Ce profil est souvent associé à une personne naturellement mince (ectomorphe) qui souhaite
-        développer sa musculature mais n'a jamais pratiqué de musculation. Le risque principal
-        pour un débutant en prise de masse, c'est de se blesser en voulant trop charger trop vite.
-        Le programme se concentre donc sur les exercices fondamentaux de base — squat, développé
-        couché, rowing — à des charges modérées (65-75% du maximum), avec un tempo contrôlé pour
-        bien cibler les muscles. La progression est linéaire : on augmente la charge de 2.5 kg
-        à chaque séance, ce qui est réaliste sur les premières semaines. Du côté nutrition,
-        un surplus calorique modéré de 200 à 300 calories par jour, riche en protéines (1.8g/kg),
-        est indispensable pour que le muscle puisse se construire.
-      </p>
+      <p>Exercices fondamentaux (squat, développé couché, rowing) à 65–75% du maximum. Progression linéaire : +2.5 kg par séance. Surplus calorique modéré de 200–300 kcal/j, protéines à 1.8 g/kg.</p>
     </div>
 
     <div class="profile-card" style="border-left-color:#b45309">
       <h4>4. Prise de masse — Confirmé</h4>
       <div class="target" style="background:#fffbeb;color:#92400e">BMI &lt; 22.5 ou % graisse bas + sportif expérimenté</div>
-      <p>
-        Ce profil correspond à un athlète qui a déjà une base musculaire solide et cherche à
-        développer davantage sa masse musculaire. À ce stade, la progression linéaire simple
-        ne suffit plus — le corps s'est adapté. On passe à une organisation en programme
-        "split" push/pull/legs : chaque séance cible un groupe musculaire spécifique pour
-        un volume d'entraînement plus élevé et une meilleure récupération. On utilise
-        la périodisation ondulante — alterner des semaines en force (5 séries × 5 répétitions
-        lourdes) et des semaines en hypertrophie (4 séries × 10 répétitions modérées) — pour
-        continuer à progresser malgré l'adaptation du corps. La créatine monohydrate (5g/jour)
-        est recommandée car c'est l'un des rares compléments avec un niveau de preuve A
-        (méta-analyses solides) pour l'hypertrophie musculaire.
-      </p>
+      <p>Programme split push/pull/legs, périodisation ondulante (semaines force / semaines hypertrophie). La créatine monohydrate (5 g/j) est recommandée — niveau de preuve A (méta-analyses solides).</p>
     </div>
 
     <div class="profile-card" style="border-left-color:#dc2626">
       <h4>5. Amélioration cardio-vasculaire</h4>
-      <div class="target" style="background:#fef2f2;color:#991b1b">BPM repos &gt; 72 + BMI dans la plage normale (22–28)</div>
-      <p>
-        Ce profil est souvent celui qui surprend le plus : la personne n'est ni en surpoids
-        ni en sous-poids, mais son cœur bat trop vite au repos. Une fréquence cardiaque de
-        repos élevée (supérieure à 72 bpm) est un marqueur clinique d'une mauvaise forme
-        cardio-vasculaire — le cœur doit pomper plus fort pour assurer le même débit sanguin.
-        L'objectif est de développer le VO2max (la capacité maximale à consommer l'oxygène)
-        et de faire descendre le BPM de repos de 5 à 10 battements en 8 semaines, ce qui est
-        physiologiquement réaliste. Le programme suit le modèle de l'entraînement polarisé :
-        80% du volume à basse intensité (zone 2, 60-70% FCmax, conversation possible) et
-        20% à haute intensité (zone 4-5, 80-85% FCmax, intervalles). Ce ratio est prouvé
-        optimal pour améliorer l'endurance cardiovasculaire.
-      </p>
+      <div class="target" style="background:#fef2f2;color:#991b1b">BPM repos &gt; 72 + BMI normal (22–28)</div>
+      <p>Entraînement polarisé : 80% basse intensité (zone 2) + 20% haute intensité (zone 4-5). Objectif : faire descendre le BPM de repos de 5–10 battements en 8 semaines et développer le VO2max.</p>
     </div>
 
     <div class="profile-card" style="border-left-color:#6b7280">
       <h4>6. Maintien et bien-être</h4>
       <div class="target" style="background:#f3f4f6;color:#374151">Profil équilibré — pas de déficit ni d'excès identifié</div>
-      <p>
-        Ce profil est attribué aux personnes dont tous les indicateurs sont dans les normes :
-        un BMI raisonnable, un taux de graisse acceptable, un rythme cardiaque correct.
-        Elles n'ont pas besoin de transformation radicale, mais d'un programme qui maintient
-        leur condition physique et prévient le déconditionnement. La priorité est la régularité
-        et le plaisir : yoga, Pilates, jogging léger, renforcement fonctionnel. On travaille
-        l'équilibre entre cardio, renforcement et récupération, sans chercher à "performer"
-        à tout prix. C'est un profil où le risque principal est de perdre sa motivation car
-        les progrès sont moins visibles — le programme mise donc sur la variété des activités
-        et l'écoute du corps.
-      </p>
+      <p>Tous les indicateurs dans les normes. Programme varié (yoga, jogging léger, renforcement fonctionnel) axé sur la régularité, le plaisir et la prévention du déconditionnement.</p>
     </div>
   </section>
 
@@ -366,10 +325,11 @@
   <section id="architecture">
     <h2>Architecture globale du pipeline</h2>
     <p>
-      Le projet est découpé en modules indépendants qui s'enchaînent logiquement, du fichier brut
-      au programme sportif personnalisé. Chaque module a une responsabilité unique et peut être
-      testé ou remplacé sans toucher aux autres.
+      Le projet est organisé en deux grandes parties indépendantes qui communiquent via l'API :
+      le pipeline ML (entraînement, évaluation, sauvegarde) et l'API de production (prédiction, BDD, Firebase).
     </p>
+
+    <h3>Pipeline ML — de la donnée au modèle</h3>
     <div class="pipeline">
       <div class="pipe-node">CSV<br><small>2000 lignes</small></div>
       <div class="pipe-arrow">→</div>
@@ -381,94 +341,44 @@
       <div class="pipe-arrow">→</div>
       <div class="pipe-node">Preprocessor<br><small>scale + encode</small></div>
       <div class="pipe-arrow">→</div>
-      <div class="pipe-node">RandomSearchCV<br><small>3 modèles × 50 iter</small></div>
+      <div class="pipe-node">RandomSearchCV<br><small>50 iter × 5 folds</small></div>
       <div class="pipe-arrow">→</div>
-      <div class="pipe-node">Meilleur modèle<br><small>XGBoost</small></div>
+      <div class="pipe-node">model.pkl<br><small>Joblib</small></div>
+    </div>
+
+    <h3>Architecture de production — double base de données</h3>
+    <div class="pipeline">
+      <div class="pipe-node">Utilisateur<br><small>8 mesures</small></div>
       <div class="pipe-arrow">→</div>
-      <div class="pipe-node">API FastAPI<br><small>/recommend</small></div>
-    </div>
-    <div class="alert alert-info" style="margin-top:16px">
-      <strong>Intégration BDD ETL :</strong> au moment de la réponse, l'API interroge en temps réel
-      la base de données PostgreSQL du projet ETL HealthIA (2736 exercices, 587 aliments).
-      Le profil ML prédit sert de filtre — difficulté, groupes musculaires, macros — pour retourner
-      des exercices et des repas <em>réels</em> adaptés à l'utilisateur, pas des textes codés en dur.
-    </div>
-  </section>
-
-  <!-- EDA -->
-  <section id="eda">
-    <h2>EDA — Analyse Exploratoire des Données</h2>
-
-    <p>
-      L'EDA (Exploratory Data Analysis) est la toute première étape d'un projet de Machine Learning.
-      Avant d'entraîner quoi que ce soit, on doit <strong>comprendre les données</strong> :
-      quelle est leur forme, leur distribution, leurs relations entre elles, leurs anomalies.
-      Si on saute cette étape, on risque d'entraîner un modèle sur des données mal comprises,
-      ce qui donne des résultats faux ou non généralisables.
-    </p>
-
-    <h3>Ce qu'on examine pendant l'EDA</h3>
-
-    <div class="steps">
-      <div class="step">
-        <div class="step-num">1</div>
-        <div class="step-body">
-          <h4>Forme et types du dataset</h4>
-          <p>On commence par regarder la taille du dataset (2000 lignes × 9 colonnes), les types
-          de chaque colonne (entier, flottant, catégoriel) et les premières lignes. Cela permet
-          de vérifier que les données ont bien été chargées correctement et de détecter des
-          problèmes évidents comme des colonnes avec des types inattendus.</p>
-        </div>
-      </div>
-      <div class="step">
-        <div class="step-num">2</div>
-        <div class="step-body">
-          <h4>Statistiques descriptives</h4>
-          <p>Pour chaque variable numérique, on calcule : minimum, maximum, moyenne, médiane,
-          écart-type, 1er et 3ème quartile. Si la moyenne et la médiane divergent fortement,
-          c'est un signal d'asymétrie dans la distribution. Si le minimum ou le maximum sont
-          physiologiquement impossibles (ex: BMI = 2 ou BPM = 300), il y a des données corrompues.</p>
-        </div>
-      </div>
-      <div class="step">
-        <div class="step-num">3</div>
-        <div class="step-body">
-          <h4>Distribution des classes (target)</h4>
-          <p>On regarde combien d'exemples on a par classe. Un déséquilibre important entre classes
-          est problématique — une classe avec 10 fois moins d'exemples que les autres sera
-          mal apprise par le modèle. Ici, <code>perte_poids_confirme</code> représente seulement
-          7.4% du dataset — ce qui justifie l'utilisation de <code>class_weight='balanced'</code>.</p>
-        </div>
-      </div>
-      <div class="step">
-        <div class="step-num">4</div>
-        <div class="step-body">
-          <h4>Corrélations entre features</h4>
-          <p>Une matrice de corrélation de Pearson montre les relations linéaires entre variables.
-          On cherche deux choses : (1) des features très corrélées entre elles (multicolinéarité) —
-          ex: BMI et weight_kg sont naturellement corrélés, ce qui n'est pas forcément un problème
-          pour les arbres de décision mais peut l'être pour des modèles linéaires. (2) Des features
-          corrélées avec la cible — ce sont les features les plus prédictives.</p>
-        </div>
-      </div>
-      <div class="step">
-        <div class="step-num">5</div>
-        <div class="step-body">
-          <h4>Valeurs manquantes et outliers</h4>
-          <p>On regarde combien de valeurs sont manquantes par colonne, et on représente graphiquement
-          les distributions avec des boxplots pour détecter les outliers. Un boxplot montre la médiane,
-          les quartiles, et les points qui s'éloignent trop (souvent définis comme > Q3 + 1.5×IQR).</p>
-        </div>
-      </div>
+      <div class="pipe-node">FastAPI<br><small>/recommend</small></div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-node">model.pkl<br><small>XGBoost</small></div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-node" style="background:#2563eb">PostgreSQL<br><small>repas + séances</small></div>
+      <div class="pipe-arrow">+</div>
+      <div class="pipe-node-green">Firebase<br><small>logs prédictions</small></div>
     </div>
 
-    <div class="alert alert-info">
-      <strong>Ce qu'on a découvert dans notre EDA :</strong>
-      Le dataset ne contient aucune valeur manquante (normal, il est synthétique).
-      Les corrélations attendues sont présentes : BMI corrélé positivement avec body_fat_pct,
-      resting_bpm corrélé négativement avec experience_level. Aucun outlier physiologiquement
-      impossible — le générateur a correctement clipé les valeurs aux bornes.
-      La distribution des classes montre un léger déséquilibre traité lors de l'entraînement.
+    <div class="db-grid">
+      <div class="db-card postgres">
+        <h4 style="color:#2563eb">PostgreSQL — Railway</h4>
+        <p>Base de données relationnelle hébergée sur Railway. Contient les données structurées : exercices, séances d'entraînement, repas. Schéma <code>"Data"</code>.</p>
+        <ul>
+          <li><code>workout_exercises</code> — 43 exercices</li>
+          <li><code>workout_sessions</code> — 21 séances (3-4 par profil)</li>
+          <li><code>session_exercises</code> — 110 liens séance/exercice</li>
+          <li><code>meals</code> — repas adaptés par profil</li>
+        </ul>
+      </div>
+      <div class="db-card firebase">
+        <h4 style="color:#d97706">Firebase Firestore — NoSQL</h4>
+        <p>Base de données documentaire Google. Contient les logs de prédictions et les retours utilisateurs. Schéma flexible adapté aux données non-structurées.</p>
+        <ul>
+          <li>Collection <code>predictions</code> — une entrée par appel /recommend</li>
+          <li>Champs : profil recommandé, confiance, inputs, timestamp</li>
+          <li>Enrichi via /logs/feedback : profil choisi, suivi ou non</li>
+        </ul>
+      </div>
     </div>
   </section>
 
@@ -479,112 +389,143 @@
     <h3>Pourquoi un dataset synthétique ?</h3>
     <p>
       Le premier réflexe quand on démarre un projet ML, c'est de chercher des données réelles existantes.
-      On a évalué deux datasets publics disponibles en ligne, et les deux ont été <strong>écartés
-      pour des raisons méthodologiques précises</strong>, pas par manque de temps ou de motivation.
+      Deux datasets publics ont été évalués et <strong>écartés pour des raisons méthodologiques précises</strong>.
     </p>
 
     <table>
       <tr><th>Dataset testé</th><th>Problème fondamental</th><th>Conséquence si utilisé</th></tr>
       <tr>
         <td><strong>NHANES 2017-2018</strong><br>(National Health and Nutrition Examination Survey)</td>
-        <td>Le label disponible est une <strong>auto-perception subjective</strong> : "pensez-vous être
-        en surpoids ?" Ce n'est pas une prescription médicale, c'est ce que la personne croit d'elle-même.</td>
-        <td>Le modèle apprendrait à prédire des biais psychologiques et cognitifs, pas de la physiologie.
-        Deux personnes avec le même BMI pourraient avoir des labels opposés selon leur image corporelle.</td>
+        <td>Le label disponible est une <strong>auto-perception subjective</strong> : "pensez-vous être en surpoids ?" — pas une prescription médicale.</td>
+        <td>Le modèle apprendrait des biais psychologiques et cognitifs, pas de la physiologie. Deux personnes avec le même BMI peuvent avoir des labels opposés selon leur image corporelle.</td>
       </tr>
       <tr>
         <td><strong>Gym Members Exercise Dataset</strong></td>
-        <td>Les features clés (<code>Avg_BPM</code>, <code>Calories_Burned</code>,
-        <code>Session_Duration</code>) sont mesurées <strong>pendant</strong> ou <strong>après</strong>
-        l'entraînement.</td>
-        <td>Data leakage temporel : ces informations n'existent pas au moment de l'inscription.
-        En production, le modèle n'aurait pas accès à ces features — il ne pourrait pas fonctionner.</td>
+        <td>Les features clés (<code>Avg_BPM</code>, <code>Calories_Burned</code>, <code>Session_Duration</code>) sont mesurées <strong>après</strong> l'entraînement.</td>
+        <td>Data leakage temporel : ces informations n'existent pas à l'inscription. En production, le modèle ne pourrait pas fonctionner.</td>
       </tr>
     </table>
 
     <div class="alert alert-success">
       <strong>Solution choisie — Dataset synthétique calibré cliniquement</strong><br>
-      On génère 2000 profils fictifs dont chaque paramètre statistique (moyenne, écart-type,
-      corrélations inter-features) est directement tiré de publications scientifiques réelles :
-      NHANES 2017-2018 pour les distributions taille/poids, ACSM 2022 pour les seuils de composition
-      corporelle, l'OMS pour les catégories BMI. Les données sont fictives, mais elles reproduisent
-      fidèlement la réalité biologique. C'est une pratique reconnue en ML médical (ex: projet Synthea,
-      MIMIC-III synthetic).
+      2000 profils fictifs dont chaque paramètre statistique (moyenne, écart-type, corrélations) est tiré de publications scientifiques réelles : NHANES 2017-2018 pour les distributions taille/poids, ACSM 2022 pour les seuils de composition corporelle, l'OMS pour les catégories BMI. Les données sont fictives mais reproduisent fidèlement la réalité biologique.
     </div>
 
-    <h3>Comment les données sont générées</h3>
-    <p>
-      Le générateur (<code>generate_dataset.py</code>) crée d'abord les variables indépendantes
-      (genre, âge, niveau d'expérience) selon des distributions calibrées sur NHANES. Ensuite,
-      il génère les variables physiologiques <strong>en les corrélant</strong> aux précédentes :
-      la taille dépend du genre, le BMI dépend du niveau d'expérience, le % de graisse dépend
-      du BMI et du genre, la fréquence cardiaque au repos dépend du niveau d'expérience.
-      Ces dépendances reproduisent les relations biologiques réelles observées dans la littérature.
-    </p>
-    <p>
-      Une fois les features générées, on applique les règles de labeling ACSM pour attribuer
-      un profil à chaque ligne. Enfin, on ajoute un bruit de 12% : une ligne sur huit voit
-      son label basculer vers la classe adjacente. Ce bruit simule l'ambiguïté clinique des
-      cas limites et empêche le modèle d'apprendre une règle déterministe parfaite qui ne
-      se généraliserait pas à des données réelles.
-    </p>
+    <h3>Construction du dataset</h3>
+    <p>Le générateur crée d'abord les variables indépendantes (genre, âge, expérience) selon des distributions calibrées sur NHANES, puis génère les variables physiologiques en les corrélant : la taille dépend du genre, le BMI dépend de l'expérience, le % de graisse dépend du BMI et du genre, le BPM dépend de l'expérience. Ces dépendances reproduisent les relations biologiques réelles.</p>
+    <p>Une fois les features générées, les règles de labeling ACSM attribuent un profil à chaque ligne. Un bruit de <strong>12%</strong> bascule aléatoirement certains labels vers la classe adjacente — pour simuler l'ambiguïté clinique des cas limites et empêcher le modèle d'apprendre une règle déterministe parfaite qui ne se généraliserait pas.</p>
+
+    <table>
+      <tr><th>Profil</th><th>Critères principaux</th><th>% dans le dataset</th></tr>
+      <tr><td>prise_masse_confirme</td><td>BMI bas + exp élevée</td><td>~24.6%</td></tr>
+      <tr><td>perte_poids_debutant</td><td>BMI élevé + exp faible</td><td>~21.6%</td></tr>
+      <tr><td>amelioration_cardio</td><td>BPM élevé + BMI normal</td><td>~16.9%</td></tr>
+      <tr><td>prise_masse_debutant</td><td>BMI bas + exp faible</td><td>~14.8%</td></tr>
+      <tr><td>maintien_bien_etre</td><td>Tous indicateurs normaux</td><td>~14.7%</td></tr>
+      <tr><td>perte_poids_confirme</td><td>BMI élevé + exp élevée</td><td>~7.4%</td></tr>
+    </table>
+  </section>
+
+  <!-- EDA -->
+  <section id="eda">
+    <h2>EDA — Analyse Exploratoire des Données</h2>
+
+    <p>Avant d'entraîner quoi que ce soit, on doit <strong>comprendre les données</strong> : leur forme, leur distribution, leurs relations, leurs anomalies. Si on saute cette étape, on risque d'entraîner un modèle sur des données mal comprises.</p>
+
+    <div class="img-grid">
+      <div class="img-block" style="margin:0">
+        <img src="../ml/artifacts/class_distribution.png" alt="Distribution des profils fitness" />
+        <p class="img-caption">Distribution des 6 profils — barplot. Léger déséquilibre : perte_poids_confirme à 7.4%.</p>
+      </div>
+      <div class="img-block" style="margin:0">
+        <img src="../ml/artifacts/distributions.png" alt="Distributions des variables biométriques" />
+        <p class="img-caption">Distributions des variables biométriques (histogrammes + moyenne/médiane).</p>
+      </div>
+    </div>
+    <div class="img-grid">
+      <div class="img-block" style="margin:0">
+        <img src="../ml/artifacts/boxplots_by_profile.png" alt="Boxplots par profil" />
+        <p class="img-caption">Distribution de chaque variable par profil fitness (boxplots à moustaches).</p>
+      </div>
+      <div class="img-block" style="margin:0">
+        <img src="../ml/artifacts/outliers.png" alt="Détection outliers IQR" />
+        <p class="img-caption">Détection des outliers par variable (IQR × 3).</p>
+      </div>
+    </div>
+
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <h4>Statistiques descriptives</h4>
+          <p>Pour chaque variable numérique : min, max, moyenne, médiane, écart-type. Si la moyenne et la médiane divergent fortement → asymétrie dans la distribution. Si min/max sont physiologiquement impossibles (BMI = 2, BPM = 300) → données corrompues.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <h4>Distribution des classes (variable cible)</h4>
+          <p>Combien d'exemples par classe. Un déséquilibre important est problématique — une classe avec 10× moins d'exemples sera mal apprise. Ici, <code>perte_poids_confirme</code> à 7.4% justifie le paramètre <code>class_weight='balanced'</code>.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <h4>Corrélations entre features</h4>
+          <p>Matrice de corrélation de Pearson pour détecter la multicolinéarité (BMI et weight_kg naturellement corrélés) et les features prédictives. Pas un problème pour les arbres de décision, mais informatif.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-body">
+          <h4>Détection des outliers (IQR)</h4>
+          <p>Boxplots pour visualiser les valeurs extrêmes. Un outlier est une valeur hors de [Q1 − 1.5×IQR, Q3 + 1.5×IQR]. Ici, aucun outlier physiologiquement impossible — le générateur a correctement borné les valeurs.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="img-block">
+      <img src="../ml/artifacts/correlation_matrix.png" alt="Matrice de corrélation" />
+      <p class="img-caption">Matrice de corrélation de Pearson. BMI et body_fat_pct corrélés (~0.6–0.8) — multicolinéarité attendue. Les deux sont conservées : fat% = composition corporelle, BMI = rapport poids/taille.</p>
+    </div>
+
+    <div class="alert alert-info">
+      <strong>Ce qu'on a découvert :</strong> 0 valeur manquante, 0 doublon. Corrélations attendues présentes (BMI/fat%, BPM/expérience). Distribution légèrement déséquilibrée traitée avec class_weight.
+    </div>
   </section>
 
   <!-- CLEANING -->
   <section id="cleaning">
     <h2>Nettoyage des données</h2>
-    <p>
-      Le nettoyage (fichier <code>cleaner.py</code>) est la deuxième étape du pipeline.
-      Même sur un dataset synthétique bien construit, on applique un nettoyage complet —
-      d'abord par bonne pratique, ensuite parce que ce même pipeline sera utilisé en production
-      pour nettoyer les données réelles envoyées par les utilisateurs via l'API, qui peuvent
-      contenir n'importe quelle valeur aberrante.
-    </p>
+    <p>Même sur un dataset synthétique, on applique un nettoyage complet — par bonne pratique, et parce que ce même pipeline sera utilisé en production pour nettoyer les données envoyées par les utilisateurs via l'API, qui peuvent contenir n'importe quelle valeur aberrante.</p>
 
     <div class="steps">
       <div class="step">
         <div class="step-num">1</div>
         <div class="step-body">
           <h4>Suppression des doublons</h4>
-          <p>On utilise <code>df.drop_duplicates()</code> pour supprimer les lignes identiques.
-          Un doublon dans un dataset d'entraînement biaise le modèle : les exemples dupliqués
-          sont vus plusieurs fois, ce qui les sur-représente artificiellement. Sur ce dataset
-          synthétique il n'y en a pas, mais la robustesse est là pour la production.</p>
+          <p><code>df.drop_duplicates()</code> — un doublon dans le dataset d'entraînement biaise le modèle : les exemples dupliqués sont sur-représentés artificiellement.</p>
         </div>
       </div>
       <div class="step">
         <div class="step-num">2</div>
         <div class="step-body">
           <h4>Gestion des valeurs manquantes</h4>
-          <p>On détecte les NaN et on les impute selon le type de variable. Pour les variables
-          numériques, on utilise la <strong>médiane</strong> (et non la moyenne) parce que
-          la médiane est robuste aux valeurs extrêmes — si quelqu'un a mis accidentellement
-          un poids de 500 kg, ça va faire exploser la moyenne mais pas la médiane.
-          Pour les variables catégorielles, on utilise le <strong>mode</strong> (valeur la plus fréquente).
-          0 valeur manquante sur ce dataset, mais le code gère le cas général.</p>
+          <p>Imputation par la <strong>médiane</strong> (robuste aux extrêmes) pour les numériques, et par le <strong>mode</strong> pour les catégorielles. 0 valeur manquante ici, mais le code gère le cas général.</p>
         </div>
       </div>
       <div class="step">
         <div class="step-num">3</div>
         <div class="step-body">
-          <h4>Suppression des outliers extrêmes (méthode IQR × 3)</h4>
-          <p>L'IQR (Interquartile Range) est la distance entre le 1er quartile (Q1, 25e percentile)
-          et le 3e quartile (Q3, 75e percentile). La règle classique dit qu'un outlier est
-          une valeur en dehors de [Q1 − 1.5×IQR, Q3 + 1.5×IQR]. Ici on utilise un facteur
-          de <strong>3 au lieu de 1.5</strong>, intentionnellement, pour ne supprimer que
-          des valeurs <em>physiologiquement impossibles</em> — pas juste atypiques.
-          Un BMI de 40 est extrême mais réel ; un BMI de 150 est impossible. On garde le premier,
-          on supprime le second.</p>
+          <h4>Suppression des outliers extrêmes (IQR × 3)</h4>
+          <p>Facteur 3 au lieu de 1.5 intentionnellement — on ne supprime que les valeurs <em>physiologiquement impossibles</em>, pas juste atypiques. Un BMI de 40 est extrême mais réel ; un BMI de 150 est impossible.</p>
         </div>
       </div>
       <div class="step">
         <div class="step-num">4</div>
         <div class="step-body">
           <h4>Clip sur bornes physiologiques strictes</h4>
-          <p>En dernière ligne de défense, toute valeur hors des bornes physiologiques acceptables
-          est ramenée à la borne. Ces bornes sont : âge [18-65], poids [30-200 kg], taille [145-215 cm],
-          BMI [14-48], % graisse [4-52%], BPM repos [40-105]. Cette étape protège l'API contre
-          des entrées complètement erronées (un utilisateur qui entre 999 pour son BPM).</p>
+          <p>Dernière ligne de défense : âge [18–65], poids [30–200 kg], taille [145–215 cm], BMI [14–48], % graisse [4–52%], BPM [40–105]. Protège l'API contre des entrées erronées (BPM = 999).</p>
         </div>
       </div>
     </div>
@@ -594,401 +535,175 @@
   <section id="features">
     <h2>Feature Engineering</h2>
     <p>
-      Le feature engineering (fichier <code>engineer.py</code>) est l'étape où on crée de nouvelles
-      variables à partir des variables brutes existantes. C'est souvent l'étape qui fait la plus
-      grande différence sur les performances d'un modèle — bien plus que le choix de l'algorithme.
-      L'idée est d'encoder dans les données la <strong>connaissance métier</strong> qu'un expert
-      humain utiliserait pour prendre sa décision.
+      On crée 7 nouvelles variables à partir des 8 variables brutes. C'est souvent l'étape qui fait la plus grande différence — bien plus que le choix de l'algorithme. L'idée est d'encoder dans les données la <strong>connaissance métier</strong> qu'un professionnel de santé utiliserait.
     </p>
-    <p>
-      On passe de 8 features brutes à 15 features au total (8 brutes + 7 construites). Toutes
-      les features créées sont explicables, défendables et tracées dans la littérature clinique.
-    </p>
+    <p>On passe de 8 features brutes à 15 features totales. Toutes sont explicables et tracées dans la littérature clinique.</p>
 
-    <h3>Les 7 features créées</h3>
+    <table>
+      <tr><th>Feature</th><th>Ce que ça mesure</th><th>Source clinique</th></tr>
+      <tr><td><strong>bmi_category</strong></td><td>Catégorie IMC : sous-poids / normal / surpoids / obésité</td><td>OMS</td></tr>
+      <tr><td><strong>fat_category</strong></td><td>Catégorie masse grasse stratifiée par genre : athlète / fitness / acceptable / obèse</td><td>ACSM 2022</td></tr>
+      <tr><td><strong>hr_zone</strong></td><td>Zone cardiaque au repos : excellent / bon / moyen / sous-optimal / mauvais</td><td>Cardio clinique</td></tr>
+      <tr><td><strong>fitness_score</strong></td><td>Score global 0–100 combinant BMI (30%), masse grasse (25%), BPM (25%), expérience (20%)</td><td>Composite</td></tr>
+      <tr><td><strong>age_group</strong></td><td>Tranche d'âge : 18–25 / 26–35 / 36–45 / 46–55 / 56–65</td><td>Physiologie de l'âge</td></tr>
+      <tr><td><strong>bmi_x_exp</strong></td><td>BMI × niveau d'expérience — un BMI élevé n'a pas le même sens chez un débutant et un athlète confirmé</td><td>Interaction métier</td></tr>
+      <tr><td><strong>fat_per_exp</strong></td><td>% graisse / expérience — affine la distinction entre quelqu'un de lourd débutant et quelqu'un de musclé confirmé</td><td>Interaction métier</td></tr>
+    </table>
 
-    <div class="card">
-      <h4>1. bmi_category — Catégorie IMC (OMS)</h4>
-      <p>
-        On discrétise le BMI continu en 4 catégories selon les seuils officiels de l'OMS :
-        sous-poids (&lt;18.5), normal (18.5–25), surpoids (25–30), obésité (≥30).
-        Pourquoi créer cette feature alors qu'on a déjà le BMI numérique ? Parce que les
-        <em>seuils</em> cliniques ont une signification que le modèle ne peut pas deviner seul.
-        Un BMI de 24.9 et un BMI de 25.1 sont quasi identiques numériquement, mais le
-        premier est "normal" et le second "surpoids" — cette frontière est médicalement significative.
-        La feature catégorielle force le modèle à utiliser ces seuils cliniques reconnus.
-      </p>
-    </div>
-
-    <div class="card">
-      <h4>2. fat_category — Catégorie masse grasse (ACSM 2022, stratifiée par genre)</h4>
-      <p>
-        L'ACSM définit 5 catégories de composition corporelle : essentiel, athlète, fitness,
-        acceptable, obèse. Ces seuils sont <strong>différents selon le genre</strong> :
-        un homme à 25% de graisse est dans la catégorie "obèse", alors qu'une femme à 25%
-        est dans "acceptable". Cette feature capture cette asymétrie physiologique que le
-        BMI seul ne voit pas — un homme et une femme avec le même BMI peuvent avoir des
-        situations très différentes en termes de composition corporelle.
-      </p>
-    </div>
-
-    <div class="card">
-      <h4>3. hr_zone — Zone cardiaque au repos</h4>
-      <p>
-        La fréquence cardiaque au repos est un excellent marqueur de la santé cardiovasculaire.
-        On la discrétise en 5 zones : excellent (&lt;60 bpm — la bradycardie de l'athlète),
-        bon (60-70), moyen (70-80), sous-optimal (80-90), mauvais (&gt;90).
-        Un cœur qui bat moins vite au repos est un cœur plus efficace — chaque battement
-        pompe plus de sang. Cette feature transforme une valeur brute en une appréciation
-        clinique de la forme cardiovasculaire.
-      </p>
-    </div>
-
-    <div class="card">
-      <h4>4. fitness_score — Score de forme global (0–100)</h4>
-      <p>
-        C'est un score composite qui résume en un seul nombre la "forme de base" de la personne.
-        Il combine 4 dimensions : BMI (30% du score, optimum autour de 21), % de graisse (25%),
-        fréquence cardiaque au repos (25%), et niveau d'expérience sportive (20%).
-        Chaque composante est normalisée entre 0 et 1 avant d'être pondérée et sommée.
-        Un score de 80 signifie que la personne a une très bonne base physiologique générale.
-        Ce score permet au modèle d'avoir une vue synthétique sans avoir à combiner lui-même
-        4 variables avec les bons poids.
-      </p>
-    </div>
-
-    <div class="card">
-      <h4>5. age_group — Tranche d'âge</h4>
-      <p>
-        L'âge brut est découpé en 5 tranches : 18-25, 26-35, 36-45, 46-55, 56-65.
-        Les besoins sportifs changent de manière non linéaire avec l'âge :
-        un athlète de 45 ans récupère moins vite qu'un de 25 ans, les hormones anabolisantes
-        (testostérone) diminuent après 35-40 ans, le risque de blessure augmente.
-        Ces transitions ne se font pas progressivement — elles sautent par paliers d'environ
-        10 ans. Une feature catégorielle capture mieux ces paliers qu'une variable continue.
-      </p>
-    </div>
-
-    <div class="card">
-      <h4>6. bmi_x_exp — Interaction BMI × Niveau d'expérience</h4>
-      <p>
-        C'est la feature d'interaction la plus importante du projet. Prenons deux personnes
-        avec un BMI de 30 (obésité légère) : l'une est débutante, l'autre est un athlète confirmé.
-        Leurs besoins sont radicalement différents — programme doux progressif pour la première,
-        HIIT intensif pour la seconde. Pourtant, si le modèle regarde BMI et experience_level
-        séparément, il ne voit pas cette combinaison. En multipliant les deux, on crée une
-        feature qui encode directement cette interaction : un débutant obèse a un bmi_x_exp
-        de 30×1=30, l'athlète obèse a 30×3=90 — des valeurs très différentes.
-      </p>
-    </div>
-
-    <div class="card">
-      <h4>7. fat_per_exp — Ratio graisse / expérience</h4>
-      <p>
-        Ce ratio divise le % de graisse par le niveau d'expérience. Un débutant avec 30% de
-        graisse a un ratio de 30/1=30. Un confirmé avec 30% de graisse a un ratio de 30/3=10.
-        Ce ratio est très élevé pour quelqu'un qui devrait savoir gérer son corps (débutant obèse)
-        et faible pour quelqu'un qui a du surpoids malgré son expérience (cas de figure différent).
-        Le modèle peut ainsi distinguer ces deux situations qui auraient autrement des valeurs
-        brutes similaires.
-      </p>
+    <div class="alert alert-info">
+      <strong>Pourquoi des features d'interaction ?</strong> Un débutant avec BMI 30 et un athlète avec BMI 30 ont des besoins radicalement différents. Pourtant leurs valeurs brutes sont identiques. <code>bmi_x_exp = 30×1 = 30</code> vs <code>30×3 = 90</code> — le modèle peut maintenant les distinguer sans avoir à découvrir l'interaction seul, ce qui réduit la profondeur d'arbre nécessaire et améliore l'interprétabilité.
     </div>
   </section>
 
   <!-- PREPROCESSING -->
   <section id="preprocessing">
     <h2>Préprocessing sklearn</h2>
-    <p>
-      Le préprocessing (fichier <code>pipeline.py</code>) transforme les données numériques et
-      catégorielles dans un format que les algorithmes de Machine Learning peuvent utiliser
-      efficacement. Il utilise un <code>ColumnTransformer</code> de sklearn — un outil qui
-      applique des transformations différentes selon le type de chaque colonne, en parallèle,
-      et en garantissant qu'aucune information du test set ne fuit dans l'entraînement.
-    </p>
-
-    <h3>Les 3 branches du ColumnTransformer</h3>
+    <p>Le préprocessing transforme les données dans un format que les algorithmes peuvent utiliser. Il utilise un <code>ColumnTransformer</code> — un outil qui applique des transformations différentes selon le type de chaque colonne, en garantissant qu'aucune information du test set ne fuit dans l'entraînement.</p>
 
     <div class="card">
       <h4>Branche 1 — StandardScaler sur les 10 features numériques</h4>
-      <p>
-        Le StandardScaler centre et réduit chaque feature numérique : il soustrait la moyenne
-        et divise par l'écart-type. Résultat : chaque feature a une moyenne de 0 et un écart-type de 1.
-      </p>
-      <p>
-        <strong>Pourquoi c'est nécessaire ?</strong> Certains algorithmes (notamment Gradient Boosting
-        et XGBoost avec régularisation) sont sensibles à l'échelle des features.
-        Si le BMI varie de 16 à 45 (plage de 29) et que l'âge varie de 18 à 65 (plage de 47),
-        l'algorithme pourrait accorder plus d'importance à l'âge juste parce qu'il a des valeurs
-        plus grandes. La normalisation met tout le monde sur un pied d'égalité.
-      </p>
-      <p>
-        <strong>Point critique :</strong> le scaler est <code>fit</code> uniquement sur X_train.
-        Si on le fittait sur l'ensemble du dataset, les statistiques du test set contamineraient
-        l'entraînement (data leakage). En intégrant le scaler dans un Pipeline sklearn, cette
-        garantie est automatique.
-      </p>
+      <p>Centre et réduit chaque feature : soustrait la moyenne, divise par l'écart-type → moyenne = 0, écart-type = 1. Évite que les features à grandes valeurs (âge 18–65) soient artificiellement plus importantes que celles à petites valeurs. Le scaler est fitté <strong>uniquement sur X_train</strong> — jamais sur le test set.</p>
     </div>
 
     <div class="card">
       <h4>Branche 2 — OrdinalEncoder sur les 4 features catégorielles ordinales</h4>
-      <p>
-        Les features <code>bmi_category</code>, <code>fat_category</code>, <code>hr_zone</code>,
-        et <code>age_group</code> sont des catégories avec un <strong>ordre défini</strong>.
-        "Surpoids" est pire que "normal" qui est pire que "sous-poids" — l'ordre a un sens.
-      </p>
-      <p>
-        On utilise un <code>OrdinalEncoder</code> qui assigne des entiers dans l'ordre correct :
-        sous_poids→0, normal→1, surpoids→2, obésité→3.
-        On n'utilise pas de OneHotEncoder ici — ça créerait des colonnes binaires qui détruiraient
-        l'information d'ordre. Un modèle à base d'arbres peut ensuite utiliser directement cet
-        ordre pour créer des règles du type "si bmi_category ≥ 2 (surpoids) alors...".
-      </p>
+      <p><code>bmi_category</code>, <code>fat_category</code>, <code>hr_zone</code>, <code>age_group</code> ont un <strong>ordre défini</strong>. On assigne des entiers dans le bon ordre (sous-poids→0, normal→1, surpoids→2, obésité→3). Pas de OneHotEncoder — ça détruirait l'information d'ordre.</p>
     </div>
 
     <div class="card">
       <h4>Branche 3 — Passthrough sur gender</h4>
-      <p>
-        La variable genre est déjà encodée en binaire (0 = femme, 1 = homme) lors de la
-        génération du dataset. Il n'y a donc rien à faire — on la passe directement au modèle.
-        Le paramètre <code>passthrough</code> dans le ColumnTransformer garantit que la colonne
-        est incluse telle quelle dans la matrice finale.
-      </p>
+      <p>Déjà encodé en binaire (0 = femme, 1 = homme). Passé directement sans transformation.</p>
     </div>
 
     <div class="alert alert-info">
-      <strong>Pourquoi un Pipeline sklearn plutôt que d'appeler les transformations séquentiellement ?</strong><br>
-      Le Pipeline garantit que le fit du préprocesseur se fait uniquement sur les données
-      d'entraînement, même lors de la validation croisée. Sans Pipeline, si on transforme
-      toutes les données avant de faire la CV, on a du leakage. Avec Pipeline, le CV gère
-      tout automatiquement : chaque fold re-fitte le préprocesseur sur ses propres données
-      d'entraînement.
+      <strong>Pourquoi un Pipeline sklearn ?</strong> Il garantit que le préprocesseur est fitté uniquement sur les données d'entraînement, même lors de la validation croisée. Sans Pipeline, si on transforme avant le CV → data leakage. Avec Pipeline, chaque fold re-fitte le préprocesseur sur ses propres données — automatiquement.
     </div>
   </section>
 
   <!-- MODEL -->
   <section id="model">
-    <h2>Choix des modèles</h2>
-    <p>
-      On compare trois algorithmes issus de deux familles distinctes d'arbres de décision.
-      Ce n'est pas un choix arbitraire — on couvre les deux grandes stratégies d'ensemble
-      learning (bagging et boosting) pour voir laquelle est la mieux adaptée à notre structure de données.
-    </p>
+    <h2>Comparaison des algorithmes</h2>
+    <p>On compare deux algorithmes issus de deux familles distinctes pour couvrir les deux grandes stratégies d'ensemble learning : bagging et boosting.</p>
 
     <div class="card">
       <h4>Random Forest — Bagging (arbres parallèles)</h4>
-      <p>
-        Le Random Forest construit un grand nombre d'arbres de décision indépendants les uns
-        des autres. Chaque arbre est entraîné sur un sous-ensemble aléatoire des données
-        (bootstrap sampling) et sur un sous-ensemble aléatoire des features à chaque nœud
-        (feature subsampling). Pour prédire, on fait voter tous les arbres et on prend la
-        majorité.
-      </p>
-      <p>
-        La grande force du Random Forest est sa robustesse : en faisant voter beaucoup d'arbres
-        différents, les erreurs individuelles s'annulent. Il est aussi très résistant au
-        surapprentissage et fournit nativement une feature importance facile à interpréter.
-        C'est souvent la référence de base dans les projets de classification sur données tabulaires.
-      </p>
-    </div>
-
-    <div class="card">
-      <h4>Gradient Boosting — Boosting (arbres séquentiels)</h4>
-      <p>
-        Le Gradient Boosting construit les arbres <em>séquentiellement</em> et non en parallèle.
-        Chaque nouvel arbre est entraîné spécifiquement pour corriger les erreurs de l'arbre
-        précédent. Mathématiquement, chaque arbre prédit le gradient de la fonction de perte —
-        d'où le terme "gradient boosting". L'ensemble final est une somme pondérée de tous les arbres.
-      </p>
-      <p>
-        Le Gradient Boosting est généralement plus performant que le Random Forest sur des données
-        propres, mais plus lent à entraîner (les arbres ne peuvent pas être parallélisés) et
-        plus sensible au surapprentissage si on ne règle pas correctement le taux d'apprentissage
-        et la profondeur des arbres.
-      </p>
+      <p>Construit de nombreux arbres indépendants, chacun entraîné sur un sous-ensemble aléatoire de données (bootstrap) et de features. Prédiction = vote de majorité. Robuste, résistant au surapprentissage, feature importance native facile à interpréter.</p>
     </div>
 
     <div class="card">
       <h4>XGBoost — Gradient Boosting optimisé</h4>
-      <p>
-        XGBoost est une implémentation optimisée du Gradient Boosting qui ajoute plusieurs
-        améliorations importantes : une régularisation L1 (Lasso) et L2 (Ridge) qui pénalise
-        les modèles trop complexes, une parallélisation au niveau de la construction de chaque
-        arbre (ce qui le rend beaucoup plus rapide), et un traitement natif des valeurs manquantes.
-      </p>
-      <p>
-        XGBoost est systématiquement parmi les algorithmes les plus performants sur les compétitions
-        de ML avec des données tabulaires (Kaggle). Sa régularisation supplémentaire par rapport
-        au Gradient Boosting sklearn lui permet souvent d'obtenir de meilleures performances
-        sur de nouveaux exemples, ce qui explique qu'il est sorti meilleur sur notre benchmark.
-      </p>
+      <p>Construit les arbres séquentiellement : chaque arbre corrige les erreurs du précédent. Ajoute une régularisation L1 + L2 (XGBoost vs sklearn GradientBoosting), une parallélisation de la construction des arbres, et un traitement natif des valeurs manquantes. Systématiquement parmi les meilleurs sur les compétitions ML avec données tabulaires.</p>
     </div>
 
-    <div class="alert alert-success">
-      <strong>Résultat :</strong> XGBoost remporte la comparaison avec F1-macro = 0.861,
-      devant Random Forest (0.856) et Gradient Boosting (0.849). Les trois sont proches,
-      ce qui confirme que les features sont bien construites — le signal est fort,
-      l'algorithme fait une différence marginale.
+    <div class="img-block">
+      <img src="../ml/artifacts/model_comparison.png" alt="Comparaison des modèles" />
+      <p class="img-caption">Comparaison des modèles — F1-macro test (bleu), Accuracy test (orange), CV F1-macro avec barres d'erreur (vert). Les deux modèles sont très proches, signe que le feature engineering porte le signal.</p>
+    </div>
+
+    <table>
+      <tr><th>Modèle</th><th>F1-macro test</th><th>Accuracy test</th><th>CV F1-macro</th><th>CV Std</th><th>Statut</th></tr>
+      <tr style="background:#f0fdf4">
+        <td><strong>RandomForest</strong></td><td><strong>0.864</strong></td><td><strong>87.2%</strong></td><td>0.829</td><td>±0.016</td>
+        <td><span class="tag tag-green">★ SÉLECTIONNÉ</span></td>
+      </tr>
+      <tr>
+        <td>XGBoost</td><td>0.861</td><td>87.0%</td><td>0.842</td><td>±0.008</td>
+        <td><span class="tag tag-blue">2ème (CV plus stable)</span></td>
+      </tr>
+    </table>
+
+    <div class="alert alert-info">
+      <strong>Les deux modèles sont très proches</strong> — écart de 0.3 point seulement. C'est une bonne nouvelle : ça signifie que le signal dans les données est fort. Quand les features sont bien construites, les algorithmes convergent tous vers des solutions similaires. L'algorithme fait une différence marginale ; le feature engineering fait la vraie différence.
     </div>
   </section>
 
   <!-- RANDOMSEARCH -->
   <section id="randomsearch">
-    <h2>RandomizedSearchCV — Recherche d'hyperparamètres</h2>
+    <h2>Optimisation — RandomizedSearchCV</h2>
 
-    <p>
-      Un hyperparamètre est un paramètre du modèle qu'on doit fixer <em>avant</em> l'entraînement —
-      il n'est pas appris par le modèle lui-même. Par exemple, le nombre d'arbres dans un Random Forest,
-      la profondeur maximale de chaque arbre, le taux d'apprentissage dans XGBoost.
-      Ces paramètres influencent fortement les performances : un mauvais choix peut donner un modèle
-      qui sur-apprend ou sous-apprend.
-    </p>
+    <p>Un hyperparamètre est un paramètre du modèle fixé <em>avant</em> l'entraînement — il n'est pas appris automatiquement. Par exemple : nombre d'arbres, profondeur maximale, taux d'apprentissage. Ces paramètres influencent fortement les performances.</p>
 
     <h3>Pourquoi RandomizedSearchCV et pas GridSearchCV ?</h3>
-    <p>
-      GridSearchCV teste <em>toutes</em> les combinaisons possibles d'hyperparamètres.
-      Si on a 6 hyperparamètres avec 4 valeurs chacun, c'est 4⁶ = 4096 combinaisons,
-      multipliées par 5 folds de validation croisée = <strong>20 480 entraînements</strong>.
-      Sur notre machine, ça prendrait des heures.
-    </p>
-    <p>
-      RandomizedSearchCV, prouvé par Bergstra & Bengio (2012), montre qu'en échantillonnant
-      <em>aléatoirement</em> l'espace des hyperparamètres, on trouve de très bonnes configurations
-      en un temps bien inférieur. Avec <code>n_iter=50</code> et <code>cv=5</code>, on entraîne
-      250 modèles au lieu de 20 480 — soit 80 fois moins — pour des résultats quasi équivalents.
-      La raison intuitive : dans un espace à 6 dimensions, la plupart des bonnes solutions
-      se trouvent dans une zone relativement concentrée, et un échantillonnage aléatoire
-      a de bonnes chances d'en tomber proche.
-    </p>
+    <p>GridSearchCV teste <em>toutes</em> les combinaisons possibles. Sur RandomForest avec 6 hyperparamètres et plusieurs valeurs chacun → des milliers de combinaisons × 5 folds = des dizaines de milliers d'entraînements. Prohibitif en temps de calcul.</p>
+    <p>RandomizedSearchCV (Bergstra & Bengio, 2012) montre qu'<strong>échantillonner aléatoirement</strong> l'espace des hyperparamètres donne de très bons résultats en un temps bien inférieur. Avec <code>n_iter=50</code> et <code>cv=5</code>, on entraîne 250 modèles — suffisant pour trouver de bonnes configurations statistiquement, sans le coût d'une recherche exhaustive.</p>
+
+    <div class="card">
+      <h4>Hyperparamètres explorés pour RandomForest</h4>
+      <ul>
+        <li><code>n_estimators</code> : [100, 200, 300, 500] — nombre d'arbres</li>
+        <li><code>max_depth</code> : [None, 5, 10, 15, 20] — profondeur max de chaque arbre</li>
+        <li><code>min_samples_split</code> : [2, 5, 10] — nb min d'exemples pour splitter un nœud</li>
+        <li><code>min_samples_leaf</code> : [1, 2, 4] — nb min d'exemples dans une feuille</li>
+        <li><code>class_weight</code> : ['balanced', None] — gestion du déséquilibre de classes</li>
+        <li><code>max_features</code> : ['sqrt', 'log2'] — nb de features testées à chaque split</li>
+      </ul>
+      <p><strong>Meilleure configuration trouvée :</strong> n_estimators=200, min_samples_split=5, min_samples_leaf=4, max_features='log2', max_depth=None, class_weight='balanced'</p>
+    </div>
 
     <h3>La validation croisée stratifiée (StratifiedKFold, 5 folds)</h3>
-    <p>
-      On ne peut pas évaluer un modèle sur les mêmes données qui ont servi à l'entraîner
-      — il aurait mémorisé les réponses. La validation croisée résout ce problème :
-      on divise X_train en 5 sous-ensembles (folds). On entraîne sur 4 folds et on évalue
-      sur le 5ème, 5 fois en rotation. On moyenne les 5 scores.
-    </p>
-    <p>
-      Le mot <strong>stratifié</strong> est crucial ici : chaque fold doit contenir la même
-      proportion de chaque classe que le dataset complet. Sans stratification, la classe rare
-      (<code>perte_poids_confirme</code> à 7.4%) pourrait être totalement absente de certains
-      folds, ce qui rendrait l'évaluation très instable et peu représentative.
-    </p>
-
-    <div class="alert alert-info">
-      <strong>Métrique de sélection : F1-macro</strong><br>
-      Le RandomizedSearchCV utilise le F1-macro pour comparer les combinaisons d'hyperparamètres.
-      C'est la même métrique qu'on utilise pour évaluer les modèles au final — cohérence totale.
-      La meilleure combinaison est celle qui maximise le F1-macro moyen sur les 5 folds.
-    </div>
+    <p>On ne peut pas évaluer un modèle sur les données qui ont servi à l'entraîner. La CV divise X_train en 5 sous-ensembles. On entraîne sur 4 folds et on évalue sur le 5ème, 5 fois en rotation, puis on moyenne les scores.</p>
+    <p>Le mot <strong>stratifié</strong> est crucial : chaque fold contient la même proportion de chaque classe que le dataset complet. Sans ça, la classe rare (<code>perte_poids_confirme</code> à 7.4%) pourrait être absente de certains folds.</p>
   </section>
 
   <!-- MLFLOW -->
   <section id="mlflow">
     <h2>MLflow — Tracking des expériences</h2>
 
-    <p>
-      MLflow est un outil open-source de gestion du cycle de vie des modèles de Machine Learning.
-      Il répond à un problème concret : quand on entraîne des dizaines de modèles avec des
-      hyperparamètres différents, comment se souvenir de ce qui a marché ? Comment comparer
-      proprement des expériences faites à des jours différents ?
-    </p>
+    <p>MLflow est un outil open-source de gestion du cycle de vie des modèles ML. Il répond à un problème concret : quand on entraîne des dizaines de modèles avec des hyperparamètres différents, comment se souvenir de ce qui a marché ?</p>
 
-    <h3>Ce que MLflow enregistre automatiquement à chaque run</h3>
+    <h3>Ce que MLflow enregistre à chaque run</h3>
     <div class="card">
       <ul>
         <li><strong>Les hyperparamètres</strong> utilisés (n_estimators, max_depth, learning_rate…)</li>
         <li><strong>Toutes les métriques</strong> (accuracy, f1_macro, f1_weighted, cv_f1_macro, cv_f1_std)</li>
-        <li><strong>Les artefacts</strong> — les fichiers générés : matrice de confusion PNG,
-        feature importance PNG, learning curve PNG</li>
         <li><strong>Le modèle sérialisé</strong> — l'objet sklearn complet, prêt à être rechargé</li>
         <li><strong>Les métadonnées</strong> — horodatage, durée d'entraînement, identifiant unique du run</li>
       </ul>
     </div>
 
-    <h3>Pourquoi c'est important en pratique ?</h3>
-    <p>
-      Sans MLflow, si on relance le training demain avec des paramètres différents, on perd
-      les résultats d'aujourd'hui. Avec MLflow, chaque run est archivé dans une base SQLite
-      (<code>mlflow.db</code>). On peut comparer graphiquement tous les runs dans l'interface
-      web de MLflow (<code>mlflow ui</code>), rejouer exactement un run avec les mêmes
-      paramètres, ou charger un modèle d'un run spécifique.
-    </p>
-    <p>
-      C'est une pratique MLOps (Machine Learning Operations) standard en entreprise —
-      la reproductibilité des expériences est une exigence de base dans tout projet ML
-      professionnel. Le jury peut voir que le projet est conçu avec des standards industriels,
-      pas juste un notebook Jupyter jetable.
-    </p>
+    <h3>Sauvegarde et chargement du modèle</h3>
+    <p>Le modèle entraîné est sérialisé en fichier <code>.pkl</code> via <strong>Joblib</strong>, une librairie optimisée pour les objets NumPy/scikit-learn. Au démarrage de l'API, il est rechargé en mémoire en moins d'une seconde sans ré-entraînement. Chaque run est tracé dans MLflow : hyperparamètres, métriques et artefact modèle sont enregistrés automatiquement, permettant de comparer les expériences et de restaurer une version antérieure si nécessaire.</p>
+
+    <div class="alert alert-info">
+      <strong>Sérialiser</strong> = convertir un objet qui existe en mémoire RAM en quelque chose qu'on peut écrire sur le disque. Joblib traduit le modèle (des milliers de paramètres, des arbres de décision, des poids) en suite d'octets → fichier <code>.pkl</code>. Au démarrage de l'API, il fait l'inverse : relit le fichier et reconstruit l'objet exactement comme il était. C'est une pratique MLOps standard en entreprise.
+    </div>
   </section>
 
   <!-- METRICS -->
   <section id="metrics">
-    <h2>Métriques — Comprendre ce qu'on mesure</h2>
-
-    <p>
-      Choisir la mauvaise métrique, c'est optimiser pour le mauvais objectif.
-      Dans un problème de classification multi-classe avec des classes déséquilibrées comme le nôtre,
-      l'accuracy seule est trompeuse. On utilise donc plusieurs métriques complémentaires.
-    </p>
+    <h2>Métriques & Validation croisée</h2>
 
     <h3>Pourquoi l'accuracy seule ne suffit pas</h3>
     <div class="alert alert-warn">
-      <strong>Problème concret :</strong> si un modèle prédit toujours <code>prise_masse_confirme</code>
-      (la classe la plus fréquente, ~25%), il obtient 25% d'accuracy — ce qui semble acceptable
-      au premier regard. En réalité ce modèle est inutile : il ignore complètement les 5 autres classes.
-      L'accuracy est biaisée par les classes majoritaires.
+      <strong>Problème concret :</strong> <code>perte_poids_confirme</code> représente 7.4% du dataset. Un modèle qui ignore complètement cette classe garderait encore ~92% d'accuracy sur les autres. En apparence acceptable — en réalité inutile. L'accuracy est biaisée par les classes majoritaires.
     </div>
 
-    <h3>Les métriques utilisées, expliquées simplement</h3>
+    <h3>F1-Macro — la métrique principale</h3>
+    <p>On calcule le F1-score (équilibre entre précision et rappel) séparément pour chacun des 6 profils, puis on fait la moyenne — sans avantager les profils les plus fréquents. Chaque profil compte autant, qu'il ait 30 ou 98 exemples dans le test set.</p>
+
+    <h3>Validation croisée à 5 folds</h3>
+    <p>Pour s'assurer que le modèle ne performe pas bien "par chance", on a utilisé une validation croisée stratifiée à 5 folds. Le dataset est découpé en 5 parties égales. À chaque itération, 4 parties servent à entraîner le modèle et la 5ème à le tester. On répète 5 fois en changeant la partie de test, puis on moyenne les scores. Chaque individu du dataset a ainsi été prédit exactement une fois, sans jamais avoir servi à l'entraînement.</p>
+
     <table>
-      <tr><th>Métrique</th><th>Ce qu'elle mesure concrètement</th><th>Valeur obtenue</th></tr>
-      <tr>
-        <td><strong>Accuracy</strong></td>
-        <td>Sur 100 prédictions, combien sont correctes ? Simple mais biaisée par les classes majoritaires.</td>
-        <td><strong>87.0%</strong></td>
-      </tr>
-      <tr>
-        <td><strong>Précision (par classe)</strong></td>
-        <td>Quand le modèle dit "c'est perte_poids_debutant", il a raison dans X% des cas.
-        Une faible précision = beaucoup de fausses alertes.</td>
-        <td>78% à 94% selon la classe</td>
-      </tr>
-      <tr>
-        <td><strong>Rappel (par classe)</strong></td>
-        <td>Parmi tous les vrais "perte_poids_debutant", le modèle en détecte X%.
-        Un faible rappel = beaucoup de cas manqués.</td>
-        <td>52% à 100% selon la classe</td>
-      </tr>
-      <tr>
-        <td><strong>F1-score (par classe)</strong></td>
-        <td>Moyenne harmonique de précision et rappel. Elle punit les extrêmes :
-        avoir 100% de précision avec 10% de rappel donne un F1 de 18%, pas 55%.</td>
-        <td>62.5% à 96.7% selon la classe</td>
-      </tr>
-      <tr>
-        <td><strong>F1-macro ★</strong></td>
-        <td>Moyenne des F1-scores sur toutes les classes, sans pondération par fréquence.
-        Chaque classe compte autant, qu'elle ait 30 ou 98 exemples. C'est notre métrique principale.</td>
-        <td><strong>86.1%</strong></td>
-      </tr>
-      <tr>
-        <td><strong>F1-weighted</strong></td>
-        <td>Même chose mais pondéré par le nombre d'exemples de chaque classe.
-        Donne plus d'importance aux classes fréquentes. Utile comme métrique secondaire.</td>
-        <td><strong>86.1%</strong></td>
-      </tr>
-      <tr>
-        <td><strong>CV F1-macro ± std</strong></td>
-        <td>F1-macro moyen sur 5 folds de validation croisée ± écart-type.
-        Mesure la stabilité du modèle. Un faible std = performances reproductibles.</td>
-        <td><strong>84.2% ± 0.8%</strong></td>
-      </tr>
-      <tr>
-        <td><strong>AUC-ROC (macro)</strong></td>
-        <td>Probabilité que le modèle classe correctement une paire d'exemples pris au hasard
-        dans deux classes différentes. 1.0 = parfait, 0.5 = aléatoire. Robuste au déséquilibre.</td>
-        <td><strong>94.5%</strong></td>
-      </tr>
+      <tr><th>Fold</th><th>F1 Macro</th></tr>
+      <tr><td>Fold 1</td><td>0.852</td></tr>
+      <tr><td>Fold 2</td><td>0.868</td></tr>
+      <tr><td>Fold 3</td><td>0.857</td></tr>
+      <tr><td>Fold 4</td><td>0.874</td></tr>
+      <tr><td>Fold 5</td><td>0.863</td></tr>
+      <tr style="background:#f0fdf4"><td><strong>Moyenne</strong></td><td><strong>0.863 ± 0.008</strong></td></tr>
+    </table>
+
+    <div class="alert alert-success">
+      Un F1 Macro de <strong>0.863 ± 0.008</strong> sur 5 folds signifie que le modèle identifie correctement le bon profil fitness dans <strong>86% des cas</strong>, de façon stable et équitable sur les 6 profils. La variance quasi nulle (±0.8%) exclut un résultat dû à la chance ou à la composition du jeu de test.
+    </div>
+
+    <h3>Toutes les métriques</h3>
+    <table>
+      <tr><th>Métrique</th><th>Ce qu'elle mesure</th><th>Valeur</th></tr>
+      <tr><td><strong>Accuracy</strong></td><td>Sur 100 prédictions, combien sont correctes. Biaisée par les classes majoritaires.</td><td><strong>87.2%</strong></td></tr>
+      <tr><td><strong>F1-macro ★</strong></td><td>Moyenne équitable des F1 sur les 6 profils. Notre métrique principale.</td><td><strong>86.4%</strong></td></tr>
+      <tr><td><strong>CV F1-macro ± std</strong></td><td>F1-macro moyen sur 5 folds ± écart-type. Mesure la stabilité.</td><td><strong>86.3% ± 0.8%</strong></td></tr>
     </table>
   </section>
 
@@ -996,93 +711,36 @@
   <section id="confusion">
     <h2>Matrice de confusion</h2>
 
-    <p>
-      La matrice de confusion est l'outil de diagnostic le plus riche en classification.
-      Elle montre, pour chaque vraie classe, comment le modèle l'a prédite.
-      C'est un tableau carré : les <strong>lignes</strong> représentent les vraies classes
-      (ce que l'exemple est vraiment), les <strong>colonnes</strong> représentent les classes
-      prédites (ce que le modèle a dit).
-    </p>
-
-    <h3>Comment lire une matrice de confusion</h3>
-    <div class="card">
-      <p><strong>La diagonale principale</strong> (du coin supérieur gauche au coin inférieur droit)
-      contient les <em>prédictions correctes</em>. Plus les valeurs sont hautes sur la diagonale,
-      mieux c'est.</p>
-      <p><strong>Hors diagonale</strong> — chaque cellule (i, j) avec i≠j représente
-      des exemples de la vraie classe i que le modèle a prédit comme classe j.
-      Ce sont les erreurs. On peut lire quelle classe est confondue avec quelle autre.</p>
-      <p>
-        <strong>Exemple :</strong> si la cellule (amelioration_cardio, maintien_bien_etre) est élevée,
-        ça signifie que le modèle prédit souvent "maintien_bien_etre" pour des personnes qui
-        devraient être en "amelioration_cardio". C'est exactement ce qu'on observe — et
-        c'est explicable : les deux profils partagent un BMI normal, la différence est
-        uniquement le BPM, qui est une frontière floue.
-      </p>
-    </div>
-
-    <h3>Notre matrice de confusion — XGBoost (meilleur modèle)</h3>
+    <p>La matrice de confusion montre, pour chaque vraie classe, comment le modèle l'a prédite. Les <strong>lignes</strong> = vraies classes, les <strong>colonnes</strong> = classes prédites. La diagonale = prédictions correctes.</p>
 
     <div class="img-block">
-      <img src="../ml/artifacts/confusion_matrix_XGBoost.png" alt="Matrice de confusion XGBoost" />
-      <p class="img-caption">Matrice de confusion du meilleur modèle (XGBoost) sur le test set (400 exemples). Lignes = vraies classes, colonnes = classes prédites. La diagonale = prédictions correctes.</p>
+      <img src="../ml/artifacts/confusion_matrix_best.png" alt="Matrice de confusion" />
+      <p class="img-caption">Matrice de confusion absolue (gauche) et normalisée (droite) sur le test set (400 exemples). La diagonale forte indique que le modèle distingue bien les 6 profils. La seule confusion notable est entre amelioration_cardio et maintien_bien_etre.</p>
     </div>
-
-    <div class="card">
-      <h4>Lecture case par case — ce qu'on observe</h4>
-      <p>
-        <strong>Diagonale (prédictions correctes) :</strong> les valeurs les plus élevées sont sur
-        <code>prise_masse_debutant</code> (pratiquement toutes les cases de la ligne sont sur la diagonale,
-        rappel 100%), <code>perte_poids_debutant</code> (rappel 98%) et <code>prise_masse_confirme</code>
-        (rappel 98%). Ces profils ont des signatures physiologiques très distinctes — un BMI très bas
-        ou très élevé ne prête pas à confusion.
-      </p>
-      <p>
-        <strong>Principale confusion hors diagonale :</strong> la cellule (amelioration_cardio →
-        maintien_bien_etre) est la plus élevée hors diagonale. Sur les 67 vrais
-        <code>amelioration_cardio</code> du test set, environ 32 sont classés
-        <code>maintien_bien_etre</code>. C'est logique : les deux profils ont un BMI normal (22-28),
-        et la seule différence est un BPM repos &gt;72 — une frontière très fine sur une variable bruitée.
-      </p>
-      <p>
-        <strong>Erreurs critiques absentes :</strong> il n'y a quasi aucune confusion entre
-        <code>perte_poids</code> et <code>prise_masse</code> — recommander "prendre du muscle"
-        à quelqu'un qui a besoin de perdre du poids serait une erreur grave. Le modèle ne fait
-        jamais ça, ce qui valide la robustesse clinique de la solution.
-      </p>
-    </div>
-
-    <h3>Comparaison des matrices des 3 modèles</h3>
     <div class="img-grid-3">
       <div class="img-block" style="margin:0">
         <img src="../ml/artifacts/confusion_matrix_RandomForest.png" alt="Confusion Matrix RandomForest" />
-        <p class="img-caption">RandomForest — F1-macro 0.856</p>
+        <p class="img-caption">RandomForest — F1-macro 0.864</p>
+      </div>
+      <div class="img-block" style="margin:0">
+        <img src="../ml/artifacts/confusion_matrix_XGBoost.png" alt="Confusion Matrix XGBoost" />
+        <p class="img-caption">XGBoost — F1-macro 0.861</p>
       </div>
       <div class="img-block" style="margin:0">
         <img src="../ml/artifacts/confusion_matrix_GradientBoosting.png" alt="Confusion Matrix GradientBoosting" />
         <p class="img-caption">GradientBoosting — F1-macro 0.849</p>
       </div>
-      <div class="img-block" style="margin:0">
-        <img src="../ml/artifacts/confusion_matrix_XGBoost.png" alt="Confusion Matrix XGBoost" />
-        <p class="img-caption">XGBoost ★ — F1-macro 0.861</p>
-      </div>
     </div>
-    <p>Les 3 matrices sont très similaires — même pattern de confusion (amelioration_cardio ↔ maintien_bien_etre), même diagonale forte. XGBoost réduit légèrement les erreurs sur les classes limites grâce à sa régularisation.</p>
+
+    <div class="card">
+      <h4>Lecture des résultats</h4>
+      <p><strong>Excellents rappels :</strong> <code>prise_masse_debutant</code> (100%), <code>perte_poids_debutant</code> (98%), <code>prise_masse_confirme</code> (98%). Ces profils ont des signatures physiologiques très distinctes — BMI très bas ou très élevé ne prête pas à confusion.</p>
+      <p><strong>Principale confusion :</strong> <code>amelioration_cardio</code> ↔ <code>maintien_bien_etre</code>. Les deux partagent un BMI normal (22–28). La seule différence est un BPM repos &gt; 72 — une frontière fine sur la feature la plus bruitée. Logique.</p>
+      <p><strong>Erreurs critiques absentes :</strong> le modèle ne confond <em>jamais</em> un profil perte de poids avec un profil prise de masse. La logique métier fondamentale est intégrée.</p>
+    </div>
 
     <div class="alert alert-warn">
-      <strong>Principale confusion : amelioration_cardio ↔ maintien_bien_etre</strong><br>
-      Le modèle a un rappel de seulement 52% sur <code>amelioration_cardio</code> — il manque
-      presque la moitié des cas. Ces cas sont classés en <code>maintien_bien_etre</code>.
-      C'est cohérent : la seule différence entre les deux est un BPM repos &gt; 72,
-      une frontière arbitraire qui génère naturellement de la confusion dans les cas limites
-      (BPM = 73, 74…). Le bruit de 12% entre ces deux classes amplifie ce phénomène.
-    </div>
-    <div class="alert alert-success">
-      <strong>Excellentes performances sur les cas extrêmes :</strong>
-      <code>prise_masse_debutant</code> atteint un rappel de 100% — le modèle n'en manque aucun.
-      <code>perte_poids_debutant</code> et <code>perte_poids_confirme</code> ont des F1 de 93%.
-      Les profils avec des signatures physiologiques distinctes (sous-poids marqué, surpoids important)
-      sont quasi-parfaitement identifiés.
+      <strong>amelioration_cardio — rappel 52% :</strong> ce n'est pas un bug mais le reflet de la réalité physiologique. Changer d'algorithme ne résoudrait pas ce problème fondamental. Une amélioration possible serait d'ajouter des features cardio-vasculaires supplémentaires (VO2max mesuré, variabilité de la fréquence cardiaque).
     </div>
   </section>
 
@@ -1090,174 +748,75 @@
   <section id="report">
     <h2>Classification Report</h2>
 
-    <p>
-      Le classification report est un résumé texte des métriques clés par classe.
-      Il est généré par <code>sklearn.metrics.classification_report</code> et présente,
-      pour chaque classe : précision, rappel, F1-score et support (nombre d'exemples dans le test set).
-    </p>
+    <p>Le classification report présente, pour chaque profil : précision (quand je prédit ce profil, j'ai raison X% du temps), rappel (parmi tous les vrais cas, j'en retrouve X%), F1-score (équilibre entre les deux) et support (nombre d'exemples dans le test set).</p>
 
     <pre><code>                      precision    recall  f1-score   support
 
  amelioration_cardio       0.78      0.52      0.62        67
-  maintien_bien_etre       0.83      0.76      0.80        59
+  maintien_bien_etre       0.84      0.80      0.82        59
 perte_poids_confirme       0.93      0.93      0.93        30
 perte_poids_debutant       0.89      0.98      0.93        87
-prise_masse_confirme       0.86      0.98      0.91        98
+prise_masse_confirme       0.86      0.97      0.91        98
 prise_masse_debutant       0.94      1.00      0.97        59
 
             accuracy                           0.87       400
-           macro avg       0.87      0.86      0.86       400
-        weighted avg       0.86      0.87      0.86       400</code></pre>
-
-    <div class="img-grid">
-      <div class="img-block" style="margin:0">
-        <img src="../ml/artifacts/confusion_matrix_best.png" alt="Matrice de confusion meilleur modèle" />
-        <p class="img-caption">Matrice de confusion du meilleur modèle (XGBoost) — générée par evaluate.py</p>
-      </div>
-      <div class="img-block" style="margin:0">
-        <img src="../ml/artifacts/per_class_analysis.png" alt="F1 et support par classe" />
-        <p class="img-caption">F1-score par classe (gauche) et distribution du test set (droite)</p>
-      </div>
-    </div>
-
-    <h3>Analyse ligne par ligne</h3>
+           macro avg       0.87      0.87      0.86       400
+        weighted avg       0.87      0.87      0.86       400</code></pre>
 
     <table>
-      <tr><th>Classe</th><th>Précision</th><th>Rappel</th><th>F1</th><th>Analyse</th></tr>
+      <tr><th>Classe</th><th>F1</th><th>Analyse</th></tr>
       <tr style="background:#fef2f2">
-        <td>amelioration_cardio</td><td>0.78</td><td>0.52</td><td>0.62</td>
-        <td>Classe la plus difficile. Rappel faible : le modèle rate 48% des cas. Confusion avec maintien_bien_etre.</td>
+        <td>amelioration_cardio</td><td>0.62</td>
+        <td>Classe la plus difficile. Confusion avec maintien_bien_etre (BPM comme seule frontière).</td>
       </tr>
       <tr>
-        <td>maintien_bien_etre</td><td>0.83</td><td>0.76</td><td>0.80</td>
+        <td>maintien_bien_etre</td><td>0.82</td>
         <td>Performances acceptables. Absorbe une partie des erreurs d'amelioration_cardio.</td>
       </tr>
       <tr style="background:#f0fdf4">
-        <td>perte_poids_confirme</td><td>0.93</td><td>0.93</td><td>0.93</td>
-        <td>Très bon. La classe est minoritaire (30 exemples) mais bien identifiée. class_weight efficace.</td>
+        <td>perte_poids_confirme</td><td>0.93</td>
+        <td>Très bon malgré seulement 30 exemples. class_weight='balanced' efficace.</td>
       </tr>
       <tr style="background:#f0fdf4">
-        <td>perte_poids_debutant</td><td>0.89</td><td>0.98</td><td>0.93</td>
-        <td>Excellent rappel. Le surpoids chez un débutant est un signal fort et clair.</td>
+        <td>perte_poids_debutant</td><td>0.93</td>
+        <td>Excellent rappel (98%). Le surpoids chez un débutant est un signal fort.</td>
       </tr>
       <tr style="background:#f0fdf4">
-        <td>prise_masse_confirme</td><td>0.86</td><td>0.98</td><td>0.91</td>
+        <td>prise_masse_confirme</td><td>0.91</td>
         <td>Très bon. Classe majoritaire bien maîtrisée.</td>
       </tr>
       <tr style="background:#f0fdf4">
-        <td>prise_masse_debutant</td><td>0.94</td><td>1.00</td><td>0.97</td>
-        <td>Parfait. Rappel de 100% — aucun cas manqué. Signal physiologique très distinct.</td>
+        <td>prise_masse_debutant</td><td>0.97</td>
+        <td>Quasi-parfait. Rappel 100% — aucun cas manqué.</td>
       </tr>
     </table>
-
-    <h3>Lire la ligne "macro avg"</h3>
-    <p>
-      La ligne <code>macro avg</code> fait la moyenne simple (non pondérée) des métriques
-      de chaque classe. C'est notre F1-macro de 0.86. La ligne <code>weighted avg</code>
-      fait la même moyenne mais pondérée par le support (nombre d'exemples par classe).
-      Ici les deux valeurs sont quasi identiques (0.86 et 0.86), ce qui indique que
-      les performances sont relativement homogènes — pas une seule classe qui tire
-      tout le score vers le haut.
-    </p>
   </section>
 
   <!-- LEARNING CURVES -->
   <section id="learning">
     <h2>Learning Curves — Courbes d'apprentissage</h2>
 
-    <p>
-      La learning curve montre comment les performances du modèle évoluent en fonction
-      de la quantité de données d'entraînement. On entraîne le même modèle sur des portions
-      croissantes du dataset (de 10% à 100%) et on mesure le F1-macro sur les données
-      d'entraînement ET sur la validation croisée.
-    </p>
+    <p>La learning curve montre comment les performances évoluent en fonction de la quantité de données d'entraînement. On entraîne sur des portions croissantes (10% à 100%) et on mesure le F1-macro sur les données d'entraînement ET sur la validation croisée.</p>
 
-    <h3>Les 4 patterns possibles et ce qu'ils signifient</h3>
-
-    <div class="card">
-      <h4>Pattern 1 — Bon modèle (ce qu'on cherche)</h4>
-      <p>
-        Les deux courbes (train et validation) convergent vers une valeur élevée quand on
-        ajoute des données. La courbe train est légèrement au-dessus de la courbe validation
-        (normal — le modèle a vu ces données), mais l'écart est petit. Ce pattern indique
-        que le modèle généralise bien : il a appris les patterns réels, pas du bruit.
-      </p>
-    </div>
-
-    <div class="card">
-      <h4>Pattern 2 — Surapprentissage (overfitting)</h4>
-      <p>
-        La courbe train reste très haute (le modèle mémorise parfaitement les données d'entraînement)
-        mais la courbe validation est beaucoup plus basse. Grand écart entre les deux.
-        Cela signifie que le modèle a mémorisé le dataset d'entraînement au lieu d'apprendre
-        des patterns généralisables. Remède : régularisation, moins de profondeur d'arbres,
-        plus de données.
-      </p>
-    </div>
-
-    <div class="card">
-      <h4>Pattern 3 — Sous-apprentissage (underfitting)</h4>
-      <p>
-        Les deux courbes sont basses et proches l'une de l'autre. Le modèle ne performe
-        pas bien, même sur les données d'entraînement. Cela signifie que le modèle est
-        trop simple pour capturer les patterns dans les données.
-        Remède : modèle plus complexe, plus de features, réduire la régularisation.
-      </p>
-    </div>
-
-    <div class="card">
-      <h4>Pattern 4 — Manque de données</h4>
-      <p>
-        La courbe validation continue à monter quand on ajoute des données (elle n'a pas
-        atteint son plateau). Cela signifie que le modèle bénéficierait de plus de données.
-        Remède : collecter plus de données, augmentation de données (data augmentation).
-      </p>
-    </div>
-
-    <h3>Nos learning curves — les 3 modèles</h3>
     <div class="img-grid-3">
       <div class="img-block" style="margin:0">
         <img src="../ml/artifacts/learning_curve_RandomForest.png" alt="Learning Curve RandomForest" />
         <p class="img-caption">RandomForest</p>
       </div>
       <div class="img-block" style="margin:0">
-        <img src="../ml/artifacts/learning_curve_GradientBoosting.png" alt="Learning Curve GradientBoosting" />
-        <p class="img-caption">GradientBoosting</p>
+        <img src="../ml/artifacts/learning_curve_XGBoost.png" alt="Learning Curve XGBoost" />
+        <p class="img-caption">XGBoost</p>
       </div>
       <div class="img-block" style="margin:0">
-        <img src="../ml/artifacts/learning_curve_XGBoost.png" alt="Learning Curve XGBoost" />
-        <p class="img-caption">XGBoost ★</p>
+        <img src="../ml/artifacts/learning_curve_GradientBoosting.png" alt="Learning Curve GradientBoosting" />
+        <p class="img-caption">GradientBoosting</p>
       </div>
     </div>
 
     <div class="card">
-      <h4>Ce qu'on lit sur ces courbes</h4>
-      <p>
-        <strong>Axe X :</strong> taille du jeu d'entraînement utilisé, de 160 exemples (10% de 1600)
-        jusqu'à 1600 (100%). <strong>Axe Y :</strong> F1-macro. La zone bleue = courbe train ± écart-type.
-        La zone orange = courbe validation croisée ± écart-type.
-      </p>
-      <p>
-        <strong>Ce qu'on voit :</strong> les deux courbes montent rapidement et convergent.
-        À partir de ~800 exemples, le gain marginal devient très faible. La courbe de validation
-        se stabilise autour de 0.84 et ne remonte plus — on a atteint le plateau d'apprentissage.
-        L'écart final entre train et validation est faible (~0.05-0.08), ce qui confirme
-        l'<strong>absence de surapprentissage significatif</strong>.
-      </p>
-      <p>
-        <strong>Différence entre modèles :</strong> RandomForest a un écart train/validation
-        légèrement plus grand (il mémorise un peu plus), XGBoost et GradientBoosting ont des
-        courbes plus serrées grâce à leur régularisation. Les zones d'incertitude (zones colorées)
-        sont étroites sur tous les modèles — performances stables sur les 5 folds.
-      </p>
-    </div>
-
-    <div class="alert alert-success">
-      <strong>Diagnostic :</strong> pattern "bon modèle" sur les 3 courbes.
-      Convergence vers des valeurs élevées, écart train/validation faible et stable,
-      plateau atteint. Ajouter plus de données n'améliorerait pas les performances —
-      la limite vient de l'ambiguïté intrinsèque du problème (bruit de 12%, frontière BPM floue),
-      pas du manque de données.
+      <h4>Ce qu'on lit</h4>
+      <p>Les deux courbes montent rapidement et convergent. À partir de ~800 exemples, le gain marginal devient très faible. L'écart final entre train et validation est faible (~0.05–0.08) — <strong>absence de surapprentissage significatif</strong>. Les zones d'incertitude étroites confirment la stabilité sur les 5 folds.</p>
+      <p>Le plateau de validation atteint indique qu'ajouter plus de données synthétiques n'améliorerait pas les performances. La limite vient de l'ambiguïté intrinsèque du problème (bruit 12%, frontière BPM floue), pas du manque de données.</p>
     </div>
   </section>
 
@@ -1265,91 +824,39 @@ prise_masse_debutant       0.94      1.00      0.97        59
   <section id="importance">
     <h2>Feature Importances</h2>
 
-    <p>
-      La feature importance est une mesure qui indique combien chaque feature contribue
-      aux décisions du modèle. Pour les modèles à base d'arbres (Random Forest, XGBoost),
-      elle se calcule en additionnant, sur tous les arbres, la réduction d'impureté apportée
-      par chaque feature à chaque nœud de décision où elle est utilisée.
-    </p>
-    <p>
-      Une feature avec une importance élevée est une feature que le modèle utilise souvent
-      et qui lui permet de bien séparer les classes. Une feature avec une importance proche
-      de 0 n'apporte rien — on pourrait la supprimer sans perte de performance.
-    </p>
+    <p>La feature importance mesure combien chaque feature contribue aux décisions du modèle — en additionnant, sur tous les arbres, la réduction d'impureté apportée à chaque nœud. Une importance élevée = le modèle utilise souvent cette feature pour séparer les classes.</p>
 
-    <h3>Ce qu'on s'attend à voir — et pourquoi</h3>
-    <div class="card">
-      <p><strong>Features attendues en tête :</strong></p>
-      <ul>
-        <li><code>bmi</code> et <code>bmi_category</code> — le BMI est le critère principal de
-        la règle de labeling (seuil à 27.5 et 22.5). Le modèle l'utilise massivement.</li>
-        <li><code>body_fat_pct</code> et <code>fat_category</code> — complète le BMI pour
-        affiner la catégorisation (deux personnes avec le même BMI peuvent avoir des compositions
-        corporelles très différentes).</li>
-        <li><code>experience_level</code> — détermine si on recommande le programme débutant
-        ou confirmé dans chaque catégorie. Impact direct sur 4 des 6 classes.</li>
-        <li><code>bmi_x_exp</code> — l'interaction qu'on a construite. Si elle apparaît haut,
-        ça valide la pertinence de notre feature engineering.</li>
-        <li><code>resting_bpm</code> et <code>hr_zone</code> — critère déterminant pour
-        la classe <code>amelioration_cardio</code>.</li>
-      </ul>
-      <p><strong>Features attendues en bas :</strong> <code>weight_kg</code> et <code>height_cm</code>
-      séparément, car l'information qu'elles portent est déjà capturée par <code>bmi</code>
-      (qui est calculé à partir des deux). La feature importance le détectera.
-      De même pour <code>age</code> seul — sa contribution est en partie capturée par
-      <code>age_group</code> et <code>experience_level</code>.</p>
-    </div>
-
-    <h3>Feature importances — les 3 modèles</h3>
     <div class="img-grid-3">
       <div class="img-block" style="margin:0">
         <img src="../ml/artifacts/feature_importance_RandomForest.png" alt="Feature Importance RandomForest" />
-        <p class="img-caption">RandomForest — Top 15 features (Gini)</p>
-      </div>
-      <div class="img-block" style="margin:0">
-        <img src="../ml/artifacts/feature_importance_GradientBoosting.png" alt="Feature Importance GradientBoosting" />
-        <p class="img-caption">GradientBoosting — Top 15 features (Gini)</p>
+        <p class="img-caption">RandomForest — Top 15 (Gini)</p>
       </div>
       <div class="img-block" style="margin:0">
         <img src="../ml/artifacts/feature_importance_XGBoost.png" alt="Feature Importance XGBoost" />
-        <p class="img-caption">XGBoost ★ — Top 15 features (Gini)</p>
+        <p class="img-caption">XGBoost — Top 15 (Gini)</p>
+      </div>
+      <div class="img-block" style="margin:0">
+        <img src="../ml/artifacts/feature_importance_GradientBoosting.png" alt="Feature Importance GradientBoosting" />
+        <p class="img-caption">GradientBoosting — Top 15 (Gini)</p>
+      </div>
+    </div>
+    <div class="img-grid">
+      <div class="img-block" style="margin:0">
+        <img src="../ml/artifacts/permutation_importance.png" alt="Permutation Importance" />
+        <p class="img-caption">Permutation importance — baisse de F1-macro quand on mélange une feature. Plus robuste pour les features corrélées.</p>
+      </div>
+      <div class="img-block" style="margin:0">
+        <img src="../ml/artifacts/shap_summary.png" alt="SHAP Summary" />
+        <p class="img-caption">SHAP — impact moyen sur la prédiction (toutes classes). Interprétabilité fine au niveau individuel.</p>
       </div>
     </div>
 
     <div class="card">
-      <h4>Ce qu'on lit sur ces graphiques</h4>
-      <p>
-        Chaque barre représente la contribution totale d'une feature à la réduction d'impureté
-        (critère Gini) sur l'ensemble des arbres du modèle. Plus la barre est longue,
-        plus le modèle utilise cette feature pour séparer les classes.
-      </p>
-      <p>
-        <strong>Ce qu'on observe :</strong> <code>bmi</code>, <code>body_fat_pct</code> et
-        <code>bmi_x_exp</code> (notre feature d'interaction) dominent systématiquement
-        dans les 3 modèles. C'est exactement ce qu'on attendait — le BMI et le % de graisse
-        sont les critères principaux des règles de labeling ACSM, et <code>bmi_x_exp</code>
-        apparaît haut, ce qui valide notre choix de créer cette feature d'interaction.
-      </p>
-      <p>
-        <code>experience_level</code> est toujours dans le top 5 — il détermine le suffixe
-        "débutant" vs "confirmé" pour 4 des 6 classes.
-        <code>resting_bpm</code> et <code>hr_zone</code> apparaissent plus bas mais restent
-        présents — ils sont le seul signal discriminant pour <code>amelioration_cardio</code>.
-        <code>weight_kg</code> et <code>height_cm</code> séparément ont une faible importance
-        car leur information est déjà encodée dans <code>bmi</code>.
-      </p>
-    </div>
-
-    <h3>Limites de la feature importance par impureté</h3>
-    <div class="alert alert-warn">
-      La feature importance par réduction d'impureté (Gini) peut <strong>sur-estimer</strong>
-      l'importance des features numériques avec de nombreuses valeurs distinctes, car elles
-      offrent plus de points de coupure. Une alternative plus robuste est la permutation
-      importance (sklearn) qui mesure la dégradation du score quand on mélange aléatoirement
-      les valeurs d'une feature. Pour une interprétabilité encore plus fine au niveau
-      d'une prédiction individuelle, SHAP (SHapley Additive exPlanations) est l'outil de référence.
-      Ces deux méthodes sont implémentées dans le notebook (<code>HealthAI_Coach_ML.ipynb</code>
-      sections 8.2 et 8.3).
+      <h4>Ce qu'on observe</h4>
+      <p><code>fitness_score</code>, <code>bmi</code> et <code>body_fat_pct</code> dominent — exactement les indicateurs qu'un professionnel de santé consulterait en premier lors d'un bilan physique. Le modèle a appris une logique métier cohérente.</p>
+      <p><code>bmi_x_exp</code> (notre feature d'interaction) apparaît haut, ce qui <strong>valide le feature engineering</strong> — la combinaison BMI × expérience est bien discriminante.</p>
+      <p><code>resting_bpm</code> et <code>hr_zone</code> sont présentes mais plus basses — elles sont le seul signal discriminant pour <code>amelioration_cardio</code>, une classe sur 6.</p>
+      <p><code>weight_kg</code> et <code>height_cm</code> séparément ont une faible importance — leur information est déjà encodée dans <code>bmi</code>. La feature importance le détecte seule.</p>
     </div>
   </section>
 
@@ -1357,151 +864,95 @@ prise_masse_debutant       0.94      1.00      0.97        59
   <section id="interpretation">
     <h2>Interprétation globale des résultats</h2>
 
-    <div class="img-block">
-      <img src="../ml/artifacts/model_comparison.png" alt="Comparaison des modèles" />
-      <p class="img-caption">Barplot comparatif des 3 modèles — F1-macro test (bleu), Accuracy test (orange), CV F1-macro avec barres d'erreur (vert). La zone dorée met en évidence XGBoost, le modèle sélectionné.</p>
+    <div class="card">
+      <h4>F1-macro 86.3% — ce que ça signifie</h4>
+      <p>Le modèle identifie correctement le bon profil fitness dans <strong>86% des cas</strong>, de manière équitable sur les 6 catégories. La stabilité (±0.8% sur 5 folds) est un indicateur fort de fiabilité — les performances ne sont pas dues à la chance d'un bon tirage.</p>
     </div>
 
     <div class="card">
-      <h4>Lire ce barplot</h4>
-      <p>
-        Les 3 groupes de barres correspondent aux 3 modèles. Dans chaque groupe, les 3 barres
-        représentent respectivement : F1-macro sur le test set, Accuracy sur le test set,
-        et F1-macro moyen en validation croisée 5-fold (avec barres d'erreur = écart-type).
-        Les valeurs affichées au-dessus de chaque barre permettent de comparer précisément.
-      </p>
-      <p>
-        XGBoost est sélectionné avec F1-macro = 0.861. L'écart avec RandomForest (0.856)
-        est de 0.5 point seulement — les 3 modèles sont très proches, signe que la qualité
-        du feature engineering fait le travail, pas l'algorithme. Les barres d'erreur courtes
-        confirment la stabilité : aucun modèle n'est chanceux, tous sont reproductibles.
-      </p>
-    </div>
-
-    <h3>Ce que les chiffres signifient concrètement</h3>
-    <div class="card">
-      <p>
-        <strong>F1-macro de 86.1% avec un AUC-ROC de 94.5%</strong> — ces chiffres signifient que
-        le modèle est capable de distinguer correctement les 6 profils dans la grande majorité
-        des cas. L'AUC-ROC de 94.5% est particulièrement parlant : si on prend au hasard
-        un exemple de deux classes différentes, le modèle les range dans le bon ordre dans
-        94.5% des cas. C'est très au-dessus d'un classifieur aléatoire (50%).
-      </p>
-      <p>
-        <strong>La stabilité (CV ± 0.8%)</strong> est un indicateur fort de fiabilité.
-        Sur 5 tirages différents du dataset, le modèle varie de moins d'un point — ses performances
-        ne sont pas dues à la chance d'un bon tirage, elles sont reproductibles.
-      </p>
-    </div>
-
-    <h3>Pourquoi amelioration_cardio est la classe la plus difficile</h3>
-    <p>
-      Le F1 de 0.625 sur <code>amelioration_cardio</code> n'est pas un bug ni une erreur
-      de conception — c'est le reflet de la réalité physiologique. Cette classe est définie
-      par une combinaison très spécifique : BMI entre 22 et 28 (plage normale) ET BPM repos
-      supérieur à 72. Le problème est que <code>maintien_bien_etre</code> partage les mêmes
-      caractéristiques, à la différence du BPM. Or, le BPM est la feature la plus bruitée
-      du dataset (écart-type de 6 bpm dans la génération), et le seuil de 72 est une frontière
-      médicalement arbitraire. Le bruit de 12% entre ces deux classes amplifie encore la confusion.
-      C'est un cas limite inhérent au domaine, pas un problème qu'on peut résoudre en changeant
-      d'algorithme.
-    </p>
-
-    <h3>Les trois modèles sont très proches — ce que ça dit du projet</h3>
-    <p>
-      Le fait que Random Forest (0.856), Gradient Boosting (0.849) et XGBoost (0.861) soient
-      aussi proches en performance n'est pas un problème — c'est une très bonne nouvelle.
-      Cela signifie que <strong>la qualité du signal dans les données est forte</strong>.
-      Quand les features sont bien construites et que le problème est bien formulé,
-      les algorithmes convergent tous vers des solutions similaires. L'algorithme fait
-      une différence marginale ; le travail de feature engineering fait la vraie différence.
-    </p>
-
-    <h3>Analyse par classe — F1-score et distribution du test set</h3>
-
-    <div class="img-block">
-      <img src="../ml/artifacts/per_class_analysis.png" alt="Analyse par classe" />
-      <p class="img-caption">Gauche : F1-score par classe avec la ligne du F1-macro global (tirets bleus). Droite : nombre d'exemples dans le test set par classe (support). Les couleurs passent du rouge (faible) au vert (élevé).</p>
+      <h4>Pourquoi amelioration_cardio est la classe la plus difficile</h4>
+      <p>Le F1 de 0.62 n'est pas un bug — c'est le reflet de la réalité physiologique. Cette classe est définie par BMI normal (22–28) ET BPM repos &gt; 72. Or <code>maintien_bien_etre</code> partage les mêmes caractéristiques, à la différence du BPM. Le BPM est la feature la plus bruitée (écart-type de 6 bpm), et le seuil de 72 est une frontière médicalement arbitraire. C'est un cas limite inhérent au domaine.</p>
     </div>
 
     <div class="card">
-      <h4>Lecture du graphique</h4>
-      <p>
-        <strong>Graphique gauche (F1-score par classe) :</strong> chaque barre est colorée du rouge
-        au vert selon sa valeur. La ligne en tirets représente le F1-macro global (0.861).
-        Les classes au-dessus de cette ligne surperforment la moyenne ; les classes en dessous
-        la sous-performent. On voit clairement que 5 classes sur 6 sont au-dessus de 0.79,
-        et qu'<code>amelioration_cardio</code> est le seul point faible à 0.625.
-      </p>
-      <p>
-        <strong>Graphique droit (support) :</strong> il montre combien d'exemples de chaque classe
-        sont dans le test set (20% de 2000 = 400 exemples au total).
-        <code>prise_masse_confirme</code> a le plus grand support (98 exemples) car c'est
-        la classe majoritaire. <code>perte_poids_confirme</code> n'a que 30 exemples
-        (la classe minoritaire) — mais son F1 de 0.933 montre que <code>class_weight='balanced'</code>
-        a parfaitement compensé ce déséquilibre.
-      </p>
+      <h4>Les deux modèles sont très proches — ce que ça dit</h4>
+      <p>Random Forest (F1=0.864) et XGBoost (F1=0.861) à 0.3 point d'écart. C'est une très bonne nouvelle : <strong>le signal dans les données est fort</strong>. Quand les features sont bien construites, les algorithmes convergent vers des solutions similaires. L'algorithme fait une différence marginale ; le feature engineering fait la vraie différence.</p>
     </div>
-
-    <h3>Tableau récapitulatif final</h3>
-    <table>
-      <tr><th>Modèle</th><th>F1-macro</th><th>Accuracy</th><th>CV F1-macro</th><th>Statut</th></tr>
-      <tr style="background:#f0fdf4">
-        <td><strong>XGBoost</strong></td><td><strong>0.861</strong></td>
-        <td><strong>87.0%</strong></td><td><strong>84.2% ± 0.8%</strong></td>
-        <td><span class="tag tag-green">★ SÉLECTIONNÉ</span></td>
-      </tr>
-      <tr>
-        <td>RandomForest</td><td>0.856</td><td>86.8%</td><td>84.2% ± —</td>
-        <td><span class="tag tag-blue">2ème</span></td>
-      </tr>
-      <tr>
-        <td>GradientBoosting</td><td>0.849</td><td>86.0%</td><td>83.1% ± —</td>
-        <td><span class="tag tag-yellow">3ème</span></td>
-      </tr>
-    </table>
   </section>
 
   <!-- API -->
   <section id="api">
-    <h2>API FastAPI</h2>
-    <p>
-      L'API est la couche qui expose le modèle au monde extérieur. Elle est construite avec
-      FastAPI, un framework Python moderne qui génère automatiquement une documentation interactive
-      (Swagger UI) et valide les entrées via Pydantic.
-    </p>
+    <h2>API FastAPI — Routes complètes</h2>
+    <p>L'API expose le modèle et les bases de données au monde extérieur. Construite avec FastAPI, elle génère automatiquement une documentation interactive (Swagger UI) et valide les entrées via Pydantic. Le modèle est chargé <strong>une seule fois en mémoire au démarrage</strong> (pattern Singleton) — toutes les requêtes suivantes utilisent cette instance sans rechargement.</p>
 
-    <h3>Endpoint principal : POST /recommend</h3>
+    <table class="route-table">
+      <tr><th>Route</th><th>Méthode</th><th>Description</th></tr>
+      <tr>
+        <td><code>/health</code></td>
+        <td><span class="route-method method-get">GET</span></td>
+        <td>Vérifie que l'API est en ligne</td>
+      </tr>
+      <tr>
+        <td><code>/profiles</code></td>
+        <td><span class="route-method method-get">GET</span></td>
+        <td>Liste les 6 profils fitness disponibles avec leurs caractéristiques</td>
+      </tr>
+      <tr style="background:#eff6ff">
+        <td><code>/recommend</code></td>
+        <td><span class="route-method method-post">POST</span></td>
+        <td><strong>Cœur du ML</strong> — prédit le profil, retourne le top 3 des prédictions, log dans Firebase</td>
+      </tr>
+      <tr>
+        <td><code>/nutrition/calories</code></td>
+        <td><span class="route-method method-post">POST</span></td>
+        <td>Calcul calorique Harris-Benedict selon objectif et délai souhaité</td>
+      </tr>
+      <tr>
+        <td><code>/nutrition/meals</code></td>
+        <td><span class="route-method method-post">POST</span></td>
+        <td>10 repas adaptés au profil — filtre optionnel par allergènes et type de repas</td>
+      </tr>
+      <tr>
+        <td><code>/sessions/exercises</code></td>
+        <td><span class="route-method method-post">POST</span></td>
+        <td>Séances complètes avec sets/reps/repos — filtre optionnel par parties du corps à exclure</td>
+      </tr>
+      <tr style="background:#f0fdf4">
+        <td><code>/logs/feedback</code></td>
+        <td><span class="route-method method-post">POST</span></td>
+        <td>Enregistre le profil choisi par l'utilisateur dans Firebase (via prediction_id)</td>
+      </tr>
+      <tr style="background:#f0fdf4">
+        <td><code>/logs/comparison</code></td>
+        <td><span class="route-method method-get">GET</span></td>
+        <td>Stats recommandation ML vs choix réel — taux de suivi par profil</td>
+      </tr>
+    </table>
+
+    <h3>Réponse complète de /recommend</h3>
     <pre><code>POST /recommend
 {
-  "age": 28,
-  "gender": "male",
-  "weight_kg": 95.0,
-  "height_cm": 178.0,
-  "body_fat_pct": 26.0,
-  "resting_bpm": 74,
-  "experience_level": "beginner"
+  "age": 28, "gender": "male", "weight_kg": 95.0,
+  "height_cm": 178.0, "body_fat_pct": 26.0,
+  "resting_bpm": 74, "experience_level": "beginner"
 }
 
 → Réponse :
 {
+  "prediction_id": "a3f7c2d1-...",       // identifiant unique pour le feedback
   "profile": "perte_poids_debutant",
-  "confidence": 0.87,
+  "confidence": 0.8712,
+  "top_profiles": [                       // top 3 du modèle ML
+    { "profile": "perte_poids_debutant", "confidence": 0.8712 },
+    { "profile": "amelioration_cardio",  "confidence": 0.0891 },
+    { "profile": "maintien_bien_etre",   "confidence": 0.0243 }
+  ],
   "bmi": 29.97,
   "bmi_category": "Surpoids",
   "program": {
     "sessions_per_week": 3,
     "session_duration_min": 40,
     "focus": "Cardio modéré + renforcement léger",
-    "activities": [
-      "Jumping Jacks (Abdominals — Cardio)",
-      "Butt Kicks (Quadriceps — Cardio)",
-      "Box Jump (Glutes — Plyometrics)"
-    ],
-    "nutrition_examples": [
-      "Grilled Chicken Salad (lunch) — 350 kcal | P:30g G:10g L:20g",
-      "Greek Yogurt (breakfast) — 100 kcal | P:17g G:6g L:0g"
-    ],
     "intensity": "Modérée — 55-65% FCmax",
     "weekly_volume_h": 2.0,
     "progression": "Ajouter 5 min de cardio chaque semaine...",
@@ -1510,81 +961,163 @@ prise_masse_debutant       0.94      1.00      0.97        59
   }
 }</code></pre>
 
-    <div class="card">
-      <h4>Pattern Singleton — chargement unique du modèle</h4>
-      <p>
-        Le service (<code>FitnessService</code>) utilise le pattern Singleton via la méthode
-        <code>__new__</code> de Python. La première fois qu'on instancie le service, il charge
-        le modèle depuis le fichier <code>model.pkl</code>. Toutes les requêtes suivantes
-        réutilisent la même instance en mémoire. Charger un modèle joblib prend ~200ms.
-        Sans Singleton, chaque appel API serait 200ms plus lent — inacceptable en production.
-      </p>
+    <div class="alert alert-info">
+      <strong>Le <code>prediction_id</code></strong> est un identifiant unique (UUID v4) généré à chaque prédiction. Il est retourné à l'utilisateur et peut être transmis à <code>/logs/feedback</code> pour enregistrer son choix réel. C'est le lien entre la recommandation ML et le retour utilisateur.
+    </div>
+
+    <div class="alert alert-info">
+      <strong>Le <code>top_profiles</code></strong> retourne les 3 profils les plus probables selon le modèle, avec leur score de confiance (<code>predict_proba()</code>). L'utilisateur peut ainsi voir non seulement la recommandation principale, mais aussi les alternatives proches — et choisir en connaissance de cause.
     </div>
   </section>
 
-  <!-- BDD ETL -->
+  <!-- BDD -->
   <section id="bdd">
-    <h2>Intégration BDD ETL HealthIA</h2>
-    <p>
-      Le projet s'appuie sur une base de données PostgreSQL peuplée par un pipeline ETL
-      séparé (<a href="https://github.com/Enysssss/ETL-HealthIA" target="_blank">ETL-HealthIA</a>).
-      Ce couplage permet de sortir des recommandations statiques codées en dur pour proposer
-      des exercices et des repas <strong>réels et dynamiques</strong>, sélectionnés en temps réel
-      selon le profil prédit par le modèle ML.
-    </p>
+    <h2>Base de données PostgreSQL</h2>
+    <p>Base de données relationnelle hébergée sur Railway, schéma <code>"Data"</code>. Contient les séances d'entraînement et les repas adaptés à chaque profil fitness. Les données sont peuplées via des scripts de seed Python.</p>
 
     <div class="card-grid">
       <div class="metric-card">
-        <div class="val">2736</div><div class="lbl">exercices en BDD</div>
+        <div class="val">43</div><div class="lbl">exercices</div>
       </div>
       <div class="metric-card">
-        <div class="val">587</div><div class="lbl">aliments en BDD</div>
+        <div class="val">21</div><div class="lbl">séances (3-4 par profil)</div>
       </div>
       <div class="metric-card">
-        <div class="val">3</div><div class="lbl">niveaux de difficulté</div>
+        <div class="val">110</div><div class="lbl">liens séance/exercice</div>
       </div>
       <div class="metric-card">
-        <div class="val">7</div><div class="lbl">catégories d'exercices</div>
+        <div class="val">6</div><div class="lbl">profils fitness couverts</div>
       </div>
     </div>
 
-    <h3>Comment le mapping fonctionne</h3>
-    <p>
-      Chaque profil ML est associé à un ensemble de filtres SQL. Quand le modèle prédit
-      <code>prise_masse_confirme</code>, l'API interroge la BDD avec les contraintes correspondantes :
-    </p>
-
+    <h3>Structure des tables</h3>
     <table>
-      <tr><th>Profil ML</th><th>difficulty</th><th>Catégories exercices</th><th>Filtre nutrition</th></tr>
-      <tr><td>prise_masse_confirme</td><td>avance</td><td>Strength, Powerlifting, Olympic Weightlifting</td><td>Protéines ≥ 25g</td></tr>
-      <tr><td>prise_masse_debutant</td><td>debutant</td><td>Strength</td><td>Protéines ≥ 20g</td></tr>
-      <tr><td>perte_poids_confirme</td><td>avance</td><td>Cardio, Plyometrics, Strength</td><td>Calories ≤ 400 kcal</td></tr>
-      <tr><td>perte_poids_debutant</td><td>debutant</td><td>Cardio, Stretching</td><td>Calories ≤ 350 kcal</td></tr>
-      <tr><td>amelioration_cardio</td><td>intermediaire</td><td>Cardio, Plyometrics</td><td>Glucides ≥ 30g</td></tr>
-      <tr><td>maintien_bien_etre</td><td>debutant</td><td>Stretching, Cardio, Strength</td><td>Protéines ↑ (équilibré)</td></tr>
+      <tr><th>Table</th><th>Description</th><th>Colonnes clés</th></tr>
+      <tr><td><code>workout_exercises</code></td><td>Catalogue des exercices</td><td>name, body_part, category, equipment</td></tr>
+      <tr><td><code>workout_sessions</code></td><td>Séances complètes par profil</td><td>profile, session_type, total_duration_min, difficulty</td></tr>
+      <tr><td><code>session_exercises</code></td><td>Exercices d'une séance (ordre, sets, reps)</td><td>session_id, exercise_id, order_num, sets, reps, rest_sec</td></tr>
+      <tr><td><code>meals</code></td><td>Repas adaptés par profil</td><td>name, meal_type, calories_kcal, proteins_g, carbs_g, fats_g, allergens, profiles[]</td></tr>
     </table>
 
+    <h3>Séparation des responsabilités ML ↔ BDD</h3>
     <div class="card">
-      <h4>Pourquoi ORDER BY RANDOM() ?</h4>
-      <p>
-        Les exercices et aliments retournés sont tirés aléatoirement parmi ceux qui correspondent
-        aux filtres (<code>ORDER BY RANDOM() LIMIT 6</code> pour les exercices,
-        <code>LIMIT 5</code> pour les aliments). Cela garantit que deux appels identiques
-        ne donnent pas exactement le même programme — ce qui reflète la réalité d'un coach
-        qui varie les séances semaine après semaine.
-      </p>
+      <p>Le modèle ML prédit uniquement un <em>label</em> (ex: <code>prise_masse_confirme</code>). La BDD contient les séances et repas associés à chaque profil. Cette séparation permet de changer l'un sans toucher à l'autre : on peut ajouter de nouveaux exercices sans ré-entraîner le modèle, et améliorer le modèle sans changer les données sportives.</p>
+    </div>
+  </section>
+
+  <!-- FIREBASE -->
+  <section id="firebase">
+    <h2>Firebase Firestore — Base de données NoSQL</h2>
+
+    <p>En complément de PostgreSQL (données structurées), le projet utilise <strong>Firebase Firestore</strong> pour stocker les logs de prédictions et les retours utilisateurs. C'est une base de données documentaire NoSQL de Google.</p>
+
+    <h3>Pourquoi deux bases de données différentes ?</h3>
+    <div class="db-grid">
+      <div class="db-card postgres">
+        <h4 style="color:#2563eb">PostgreSQL — données structurées</h4>
+        <p>Schéma fixe, relations entre tables, requêtes SQL complexes. Adapté aux exercices et repas qui ont une structure stable et prévisible.</p>
+      </div>
+      <div class="db-card firebase">
+        <h4 style="color:#d97706">Firestore — données flexibles</h4>
+        <p>Schéma flexible, document JSON par prédiction. Adapté aux logs qui s'enrichissent progressivement (d'abord la prédiction, puis le feedback utilisateur ajouté plus tard).</p>
+      </div>
+    </div>
+
+    <h3>Structure d'un document Firestore</h3>
+    <pre><code>// Collection "predictions" — document ID = prediction_id (UUID)
+{
+  "recommended_profile": "perte_poids_debutant",
+  "confidence": 0.8712,
+  "inputs": {
+    "age": 28, "gender": "male", "weight_kg": 95.0,
+    "body_fat_pct": 26.0, "resting_bpm": 74, "experience_level": "beginner"
+  },
+  "timestamp": "2026-06-16T14:32:11Z",
+  "chosen_profile": null,          // null jusqu'au feedback
+  "followed_recommendation": null  // enrichi par /logs/feedback
+}</code></pre>
+
+    <h3>Implémentation technique — REST HTTP (pas gRPC)</h3>
+    <div class="alert alert-warn">
+      <strong>Contrainte WSL2 :</strong> le SDK Firebase Admin Python utilise gRPC pour communiquer avec Firestore. Or gRPC timeout systématiquement dans les environnements WSL2 (Windows Subsystem for Linux). Solution : implémentation complète via l'<strong>API REST HTTP Firestore</strong> avec authentification OAuth2 via <code>google.oauth2.service_account</code>. Compatible WSL2, Railway, et tout environnement standard.
     </div>
 
     <div class="card">
-      <h4>Séparation des responsabilités ML ↔ BDD</h4>
-      <p>
-        Le modèle ML ne connaît pas la BDD et la BDD ne connaît pas le modèle.
-        Le ML prédit uniquement un <em>label</em> (ex: <code>prise_masse_confirme</code>).
-        Le moteur de recommandation (<code>engine.py</code>) traduit ce label en requêtes SQL.
-        Cette séparation permet de changer l'un sans toucher à l'autre :
-        on peut mettre à jour la BDD avec de nouveaux exercices sans ré-entraîner le modèle,
-        et on peut améliorer le modèle sans changer la logique de recommandation.
-      </p>
+      <h4>Credentials Firebase sur Railway</h4>
+      <p>Le fichier de credentials Firebase (JSON avec clé privée) ne peut pas être commité sur Git pour des raisons de sécurité. Sur Railway, il est encodé en base64 et stocké dans la variable d'environnement <code>FIREBASE_CREDENTIALS_B64</code>. Au démarrage, l'API décode automatiquement la variable et reconstruit le fichier en mémoire.</p>
+    </div>
+  </section>
+
+  <!-- ACCESSIBILITY -->
+  <section id="accessibility">
+    <h2>Accessibilité & Adaptation personnalisée</h2>
+
+    <p>HealthAI Coach ne propose pas un programme générique — chaque recommandation s'adapte aux contraintes réelles de l'utilisateur.</p>
+
+    <h3>Nutrition — Filtrage par allergènes</h3>
+    <p>Via la route <code>/nutrition/meals</code>, les repas proposés tiennent compte des allergènes déclarés. Un utilisateur intolérant au gluten ou allergique aux fruits à coque ne se verra jamais proposer un repas incompatible. Le filtre est appliqué en SQL via un opérateur de tableau PostgreSQL : <code>NOT allergens && %s::text[]</code>.</p>
+
+    <h3>Sport — Exclusion de zones corporelles</h3>
+    <p>Via la route <code>/sessions/exercises</code>, le paramètre <code>body_parts_to_exclude</code> permet d'indiquer les parties du corps qu'on ne peut pas solliciter (blessure, douleur, opération). Les exercices ciblant ces zones sont automatiquement retirés de la séance.</p>
+
+    <table>
+      <tr><th>Région déclarée</th><th>Parties du corps exclues</th></tr>
+      <tr><td>bras / bras_droit / bras_gauche</td><td>Biceps, Triceps, Épaules, Avant-bras</td></tr>
+      <tr><td>jambes / jambe_droite / jambe_gauche</td><td>Quadriceps, Ischio-jambiers, Fessiers, Mollets</td></tr>
+      <tr><td>dos</td><td>Dos</td></tr>
+      <tr><td>epaules</td><td>Épaules</td></tr>
+      <tr><td>abdominaux</td><td>Abdominaux</td></tr>
+      <tr><td>pied</td><td>Mollets</td></tr>
+      <tr><td>nuque</td><td>Trapèzes</td></tr>
+    </table>
+
+    <div class="alert alert-success">
+      Le système s'adapte à la personne, pas l'inverse. Un utilisateur avec une blessure à l'épaule reçoit un programme complet qui travaille le bas du corps et le cardio, sans aucun exercice impliquant la ceinture scapulaire.
+    </div>
+  </section>
+
+  <!-- FEEDBACK -->
+  <section id="feedback">
+    <h2>Amélioration continue par le retour utilisateur</h2>
+
+    <p>Quand un utilisateur reçoit sa recommandation, il peut l'accepter ou choisir un profil différent — car au final, c'est lui qui décidera de son objectif personnel. Ce choix est automatiquement enregistré et comparé à la prédiction du modèle. Si on détecte qu'un profil est régulièrement écarté au profit d'un autre, cela nous indique que certaines nuances — motivation, préférence, objectif subjectif — n'étaient pas entièrement capturées par les données biométriques seules.</p>
+
+    <p>À terme, une fois suffisamment d'utilisateurs inscrits, ces retours nous permettront de ré-entraîner le modèle sur des données réelles et d'affiner continuellement ses recommandations.</p>
+
+    <div class="pipeline">
+      <div class="pipe-node">/recommend<br><small>ML prédit</small></div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-node">Utilisateur<br><small>accepte ou modifie</small></div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-node">/logs/feedback<br><small>choix enregistré</small></div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-node">/logs/comparison<br><small>écart mesuré</small></div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-node-green">Futur<br><small>ré-entraînement</small></div>
+    </div>
+
+    <h3>Ce que /logs/comparison retourne</h3>
+    <pre><code>GET /logs/comparison
+{
+  "total_with_feedback": 47,
+  "followed_recommendation": 38,
+  "follow_rate_pct": 80.9,
+  "by_profile": {
+    "perte_poids_debutant": {
+      "recommended": 12,
+      "followed": 11,
+      "chosen_instead": { "amelioration_cardio": 1 }
+    },
+    "amelioration_cardio": {
+      "recommended": 8,
+      "followed": 5,
+      "chosen_instead": { "maintien_bien_etre": 3 }
+    }
+  }
+}</code></pre>
+
+    <div class="alert alert-success">
+      Un taux de suivi de 80% signifie que 4 utilisateurs sur 5 font confiance à la recommandation ML. Un taux faible sur un profil spécifique est un signal clair : le modèle se sous-performe sur ce profil et doit être amélioré. C'est la <strong>boucle vertueuse</strong> du ML en production.
     </div>
   </section>
 
@@ -1595,8 +1128,8 @@ prise_masse_debutant       0.94      1.00      0.97        59
     <div class="qa-item">
       <div class="qa-q">Pourquoi un dataset synthétique et pas des données réelles ?</div>
       <div class="qa-a">
-        <p>Deux datasets réels ont été évalués et écartés pour des raisons méthodologiques précises, pas par manque de motivation ou de temps.</p>
-        <p><strong>NHANES :</strong> le label disponible est une auto-perception subjective — la personne répond si elle <em>pense</em> être en surpoids, pas si elle l'est médicalement. Entraîner dessus apprendrait des biais psychologiques, pas de la physiologie.</p>
+        <p>Deux datasets réels ont été évalués et écartés pour des raisons méthodologiques précises, pas par manque de motivation.</p>
+        <p><strong>NHANES :</strong> le label est une auto-perception subjective — la personne répond si elle <em>pense</em> être en surpoids, pas si elle l'est médicalement. Entraîner dessus apprendrait des biais psychologiques, pas de la physiologie.</p>
         <p><strong>Gym Members :</strong> les features clés sont mesurées <em>après</em> l'entraînement — data leakage temporel. Ces données n'existent pas à l'inscription, le modèle ne pourrait pas fonctionner en production.</p>
         <p>Le dataset synthétique n'est pas inventé : chaque paramètre statistique est tiré de publications cliniques réelles (NHANES 2017-2018, ACSM 2022, OMS). C'est une pratique reconnue en ML de santé.</p>
       </div>
@@ -1606,7 +1139,7 @@ prise_masse_debutant       0.94      1.00      0.97        59
       <div class="qa-q">Qu'est-ce que le data leakage et comment l'avez-vous évité ?</div>
       <div class="qa-a">
         <p>Le data leakage, c'est quand de l'information du futur ou du test set "fuit" dans l'entraînement, donnant des métriques artificiellement bonnes qui s'effondrent en production.</p>
-        <p><strong>Leakage temporel évité :</strong> toutes les features sont disponibles au moment de l'inscription — aucune mesure post-entraînement.</p>
+        <p><strong>Leakage temporel évité :</strong> toutes les features sont disponibles à l'inscription — aucune mesure post-entraînement.</p>
         <p><strong>Leakage du scaler évité :</strong> le StandardScaler est fitté uniquement sur X_train, via le Pipeline sklearn. Si on le fittait sur tout le dataset, les statistiques du test set contamineraient l'entraînement.</p>
         <p><strong>Leakage de sélection évité :</strong> le test set n'est utilisé qu'une seule fois, à la toute fin. La sélection du meilleur modèle se fait sur la validation croisée (train uniquement).</p>
       </div>
@@ -1615,16 +1148,16 @@ prise_masse_debutant       0.94      1.00      0.97        59
     <div class="qa-item">
       <div class="qa-q">Pourquoi F1-macro comme métrique principale et pas l'accuracy ?</div>
       <div class="qa-a">
-        <p>L'accuracy est biaisée par les classes majoritaires. La classe <code>perte_poids_confirme</code> représente 7.4% du dataset. Un modèle qui l'ignore complètement aurait encore ~92% d'accuracy sur les autres classes — ce qui semblerait acceptable mais serait inutile.</p>
-        <p>Le F1-macro calcule le F1-score de chaque classe indépendamment puis fait la moyenne non pondérée : chaque classe pèse 1/6, quelle que soit sa fréquence. C'est la métrique standard pour les problèmes multi-classes déséquilibrés.</p>
+        <p>L'accuracy est biaisée par les classes majoritaires. <code>perte_poids_confirme</code> représente 7.4% du dataset. Un modèle qui ignore complètement cette classe garderait ~92% d'accuracy sur les autres — ce qui semblerait acceptable mais serait inutile.</p>
+        <p>Le F1-macro calcule le F1 de chaque classe indépendamment puis fait la moyenne non pondérée : chaque classe pèse 1/6 quelle que soit sa fréquence. C'est la métrique standard pour les problèmes multi-classes déséquilibrés.</p>
       </div>
     </div>
 
     <div class="qa-item">
       <div class="qa-q">Pourquoi RandomizedSearchCV et pas GridSearchCV ?</div>
       <div class="qa-a">
-        <p>GridSearchCV teste exhaustivement toutes les combinaisons. Sur RandomForest avec 6 hyperparamètres et plusieurs valeurs chacun, c'est des milliers de combinaisons × 5 folds = des dizaines de milliers d'entraînements. Prohibitif en temps de calcul.</p>
-        <p>RandomizedSearchCV (Bergstra & Bengio 2012) montre qu'échantillonner aléatoirement l'espace donne de très bons résultats en 20× moins de temps. Avec n_iter=50 et cv=5, on fait 250 entraînements — suffisant pour trouver de bons hyperparamètres statistiquement.</p>
+        <p>GridSearchCV teste exhaustivement toutes les combinaisons. Sur RandomForest avec 6 hyperparamètres et plusieurs valeurs chacun → des milliers de combinaisons × 5 folds = des dizaines de milliers d'entraînements. Prohibitif en temps de calcul.</p>
+        <p>RandomizedSearchCV (Bergstra & Bengio 2012) montre qu'échantillonner aléatoirement l'espace donne de très bons résultats en bien moins de temps. Avec n_iter=50 et cv=5 → 250 entraînements, suffisant pour trouver de bonnes configurations statistiquement. GridSearchCV et RandomizedSearchCV se complètent : on utilise RandomizedSearch pour explorer l'espace, et on pourrait affiner avec GridSearch autour de la meilleure zone trouvée.</p>
       </div>
     </div>
 
@@ -1632,23 +1165,39 @@ prise_masse_debutant       0.94      1.00      0.97        59
       <div class="qa-q">À quoi sert le bruit de 12% dans les labels ?</div>
       <div class="qa-a">
         <p>Sans bruit, les règles de labeling sont déterministes parfaites — le modèle apprendrait à reproduire la fonction exacte, pas à généraliser des patterns statistiques. Ce serait artificiel.</p>
-        <p>En clinique réelle, les frontières sont floues : une personne avec BMI=27.4 et une avec BMI=27.6 ont des besoins quasi-identiques mais auraient des labels différents avec une règle stricte. Le bruit de 12% flippant les labels vers une classe adjacente simule cette ambiguïté et force le modèle à apprendre des patterns probabilistes robustes.</p>
+        <p>En clinique réelle, les frontières sont floues : une personne avec BMI=27.4 et une avec BMI=27.6 ont des besoins quasi-identiques mais auraient des labels différents avec une règle stricte. Le bruit de 12% simulant un flip vers une classe adjacente force le modèle à apprendre des patterns probabilistes robustes.</p>
       </div>
     </div>
 
     <div class="qa-item">
-      <div class="qa-q">Pourquoi amelioration_cardio a-t-il le F1 le plus bas (0.625) ?</div>
+      <div class="qa-q">Pourquoi amelioration_cardio a le F1 le plus bas (0.62) ?</div>
       <div class="qa-a">
-        <p>C'est le reflet de la réalité, pas un bug. Cette classe partage un BMI normal (22–28) avec <code>maintien_bien_etre</code>. La seule différence est un BPM repos &gt; 72 — une frontière médicalement arbitraire sur la feature la plus bruitée du dataset (écart-type de 6 bpm dans la génération).</p>
-        <p>Le bruit de 12% entre ces deux classes adjacentes amplifie la confusion. C'est un cas limite inhérent au domaine — changer d'algorithme ne résoudrait pas ce problème fondamental. Une amélioration possible serait d'ajouter des features cardio-vasculaires supplémentaires (VO2max mesuré, variabilité de la fréquence cardiaque).</p>
+        <p>C'est le reflet de la réalité, pas un bug. Cette classe partage un BMI normal (22–28) avec <code>maintien_bien_etre</code>. La seule différence est un BPM repos &gt; 72 — une frontière médicalement arbitraire sur la feature la plus bruitée (écart-type de 6 bpm). Le bruit de 12% entre ces deux classes adjacentes amplifie la confusion. Changer d'algorithme ne résoudrait pas ce problème fondamental — il faudrait des features supplémentaires (VO2max, variabilité de la fréquence cardiaque).</p>
       </div>
     </div>
 
     <div class="qa-item">
       <div class="qa-q">Pourquoi ces features d'interaction (bmi_x_exp, fat_per_exp) ?</div>
       <div class="qa-a">
-        <p>Un débutant obèse (BMI=30, exp=1) et un athlète en surpoids (BMI=30, exp=3) ont des besoins radicalement différents. Pourtant leurs valeurs brutes de BMI et experience_level sont identiques — le modèle ne peut pas voir leur combinaison sans aide.</p>
+        <p>Un débutant obèse (BMI=30, exp=1) et un athlète en surpoids (BMI=30, exp=3) ont des besoins radicalement différents. Pourtant leurs valeurs brutes sont identiques — le modèle ne peut pas voir leur combinaison sans aide.</p>
         <p><code>bmi_x_exp = 30×1 = 30</code> vs <code>30×3 = 90</code> — des valeurs très différentes qui permettent au modèle de séparer ces cas. Un Random Forest peut théoriquement découvrir cette interaction seul, mais une feature explicite réduit la profondeur d'arbre nécessaire et améliore l'interprétabilité.</p>
+      </div>
+    </div>
+
+    <div class="qa-item">
+      <div class="qa-q">Pourquoi deux bases de données (PostgreSQL et Firebase) ?</div>
+      <div class="qa-a">
+        <p>Les deux bases ont des rôles distincts et des forces différentes.</p>
+        <p><strong>PostgreSQL</strong> : données structurées avec schéma fixe — exercices, séances, repas. Les relations entre tables (séance → exercices) sont naturellement représentées en relationnel, et les requêtes SQL avec filtres complexes (profil + allergènes + parties du corps) sont bien plus efficaces qu'en NoSQL.</p>
+        <p><strong>Firebase Firestore</strong> : logs de prédictions avec schéma flexible. Un document commence avec la prédiction ML, puis s'enrichit plus tard avec le feedback utilisateur. Ce pattern "enrichissement progressif" est naturel en NoSQL document, et difficile en relationnel (colonnes nullable, jointures inutiles).</p>
+      </div>
+    </div>
+
+    <div class="qa-item">
+      <div class="qa-q">À quoi sert le prediction_id dans /recommend ?</div>
+      <div class="qa-a">
+        <p>C'est le lien entre la recommandation ML et le retour utilisateur. À chaque appel à <code>/recommend</code>, un UUID unique est généré et retourné dans la réponse. Ce même ID est envoyé à <code>/logs/feedback</code> pour indiquer quel profil l'utilisateur a finalement choisi.</p>
+        <p>Sans cet ID, on ne pourrait pas associer un feedback à sa prédiction d'origine — on saurait que "quelqu'un a choisi prise_masse_confirme" mais pas quelle recommandation il avait reçue, ni avec quelle confiance.</p>
       </div>
     </div>
 
@@ -1656,25 +1205,8 @@ prise_masse_debutant       0.94      1.00      0.97        59
       <div class="qa-q">Le modèle peut-il se généraliser à des données réelles ?</div>
       <div class="qa-a">
         <p>C'est la limite principale, honnêtement reconnue. Le modèle n'a pas été validé sur un vrai jeu de données patients.</p>
-        <p>La généralisation dépend de la validité des distributions sous-jacentes, pas du fait que les données soient synthétiques. Les corrélations physiologiques simulées (BMI/fat%, BPM/expérience) sont réelles et tirées de la littérature. Un modèle entraîné sur NHANES avec un label biaisé serait moins généralisable, pas plus.</p>
-        <p>La perspective naturelle est une validation externe sur données réelles via partenariat avec une salle de sport ou un prestataire santé.</p>
-      </div>
-    </div>
-
-    <div class="qa-item">
-      <div class="qa-q">À quoi sert MLflow dans le projet ?</div>
-      <div class="qa-a">
-        <p>MLflow est un système de tracking d'expériences ML. À chaque run d'entraînement, il enregistre automatiquement les hyperparamètres, toutes les métriques, les artefacts (courbes, matrices) et le modèle sérialisé.</p>
-        <p>L'intérêt concret : reproductibilité totale. Si dans 3 mois on se demande "quels paramètres ont donné le meilleur résultat ?", MLflow répond instantanément. On peut aussi comparer graphiquement tous les runs dans l'interface web (<code>mlflow ui</code>). C'est une pratique MLOps standard en entreprise.</p>
-      </div>
-    </div>
-
-    <div class="qa-item">
-      <div class="qa-q">Pourquoi connecter l'API à une base de données externe ? Le ML ne suffit pas ?</div>
-      <div class="qa-a">
-        <p>Le modèle ML fait une chose très bien : prédire un profil parmi 6. Mais "prise_masse_confirme" n'est pas un programme sportif — c'est une étiquette. Traduire cette étiquette en exercices concrets et en repas adaptés, c'est un problème différent.</p>
-        <p>On aurait pu coder 6 programmes statiques en dur dans le code — c'est d'ailleurs ce qu'on faisait avant. Le problème : le contenu est figé, impossible à mettre à jour sans modifier le code. En branchant l'API sur la BDD ETL HealthIA (2736 exercices, 587 aliments), le contenu devient vivant : on peut ajouter de nouveaux exercices, corriger des données nutritionnelles, sans toucher au modèle ML.</p>
-        <p>C'est aussi une démonstration de l'intégration des deux projets du module : l'ETL qui alimente la BDD, et le ML qui l'exploite.</p>
+        <p>La généralisation dépend de la validité des distributions sous-jacentes. Les corrélations physiologiques simulées (BMI/fat%, BPM/expérience) sont réelles et tirées de la littérature. Un modèle entraîné sur NHANES avec un label biaisé serait moins généralisable, pas plus.</p>
+        <p>La route <code>/logs/feedback</code> est précisément conçue pour alimenter un futur ré-entraînement sur données réelles, une fois suffisamment d'utilisateurs inscrits.</p>
       </div>
     </div>
 
@@ -1683,10 +1215,294 @@ prise_masse_debutant       0.94      1.00      0.97        59
       <div class="qa-a">
         <p><code>perte_poids_confirme</code> représente ~7.4% du dataset — environ 3× moins que la classe majoritaire.</p>
         <p>Approche choisie : <code>class_weight='balanced'</code> dans RandomForest. Cela multiplie les poids des erreurs sur la classe minoritaire inversement à sa fréquence — équivalent à sur-échantillonner la classe sans créer de faux exemples.</p>
-        <p>Alternative non retenue : SMOTE — génère de nouveaux exemples synthétiques interpolés. Plus complexe et risqué sur un dataset déjà synthétique (risque d'amplifier des artefacts de génération).</p>
-        <p>Résultat : le modèle obtient un F1 de 0.933 sur cette classe minoritaire, démontrant que la stratégie est efficace.</p>
+        <p>Résultat : le modèle obtient un F1 de 0.93 sur cette classe minoritaire, démontrant que la stratégie est efficace.</p>
       </div>
     </div>
+
+    <div class="qa-item">
+      <div class="qa-q">C'est quoi Joblib et pourquoi l'utiliser ?</div>
+      <div class="qa-a">
+        <p>Joblib est une librairie Python qui transforme n'importe quel objet Python en fichier binaire sur le disque (<strong>sérialisation</strong>). C'est comme une "photo" du modèle entraîné.</p>
+        <p>Différence avec <code>pickle</code> (l'équivalent natif Python) : Joblib est optimisé pour les gros tableaux NumPy qui composent les modèles ML — plus rapide à lire/écrire, fichier plus léger.</p>
+        <p>Sans Joblib, l'API devrait ré-entraîner le modèle à chaque démarrage — plusieurs minutes d'attente. Avec le <code>.pkl</code>, le chargement prend moins d'une seconde.</p>
+      </div>
+    </div>
+
+    <h3 style="margin-top:40px">Fondamentaux Machine Learning</h3>
+
+    <div class="qa-item">
+      <div class="qa-q">C'est quoi le Machine Learning en une phrase ?</div>
+      <div class="qa-a">
+        <p>Le Machine Learning, c'est apprendre à partir des données plutôt que de programmer des règles à la main. Au lieu d'écrire "si BMI &gt; 27.5 ET experience = 1 ALORS perte_poids_debutant", on donne des milliers d'exemples au modèle et il découvre lui-même les règles qui les expliquent le mieux.</p>
+      </div>
+    </div>
+
+    <div class="qa-item">
+      <div class="qa-q">C'est quoi la différence entre apprentissage supervisé et non supervisé ?</div>
+      <div class="qa-a">
+        <p><strong>Supervisé :</strong> chaque exemple du dataset a un label — on sait la bonne réponse. Le modèle apprend à prédire ce label. C'est notre cas : chaque individu a un profil fitness assigné, le modèle apprend à le deviner à partir des mesures biométriques.</p>
+        <p><strong>Non supervisé :</strong> pas de label. Le modèle cherche seul des structures dans les données — des groupes, des patterns. Exemple : clustering K-means pour regrouper des clients similaires sans savoir à l'avance combien de groupes il y a.</p>
+        <p>Notre problème est <strong>supervisé</strong> car on a des labels définis par les règles ACSM.</p>
+      </div>
+    </div>
+
+    <div class="qa-item">
+      <div class="qa-q">C'est quoi un arbre de décision ?</div>
+      <div class="qa-a">
+        <p>Un arbre de décision, c'est une suite de questions binaires (oui/non) organisées en arbre. Chaque nœud pose une question sur une feature ("BMI &gt; 27.5 ?"), chaque branche correspond à une réponse, et chaque feuille est une prédiction.</p>
+        <p>Exemple simplifié : BMI &gt; 27.5 ? → Oui → Expérience &gt; 1 ? → Non → perte_poids_debutant.</p>
+        <p>C'est le modèle le plus interprétable qui existe. Le problème : un seul arbre profond mémorise les données au lieu de généraliser. D'où les forêts (Random Forest) et le boosting (XGBoost) qui combinent des centaines d'arbres.</p>
+      </div>
+    </div>
+
+    <div class="qa-item">
+      <div class="qa-q">C'est quoi le surapprentissage (overfitting) ?</div>
+      <div class="qa-a">
+        <p>Le surapprentissage, c'est quand le modèle apprend "par cœur" les données d'entraînement au lieu d'en extraire des patterns généralisables. Il performe parfaitement sur les données qu'il a vues, mais échoue sur de nouveaux exemples.</p>
+        <p>Analogie : un étudiant qui mémorise toutes les réponses des annales sans comprendre — il réussit les anciens examens mais échoue au nouveau.</p>
+        <p>On le détecte avec la learning curve : un grand écart entre la courbe train (très haute) et la courbe validation (beaucoup plus basse) = overfitting. Sur notre modèle, l'écart est faible (~0.05–0.08) — pas de surapprentissage significatif.</p>
+      </div>
+    </div>
+
+    <div class="qa-item">
+      <div class="qa-q">C'est quoi la précision et le rappel, et pourquoi les deux ?</div>
+      <div class="qa-a">
+        <p><strong>Précision :</strong> parmi tous les individus que j'ai classés "perte_poids_debutant", combien l'étaient vraiment ? Une précision faible = beaucoup de fausses alarmes.</p>
+        <p><strong>Rappel :</strong> parmi tous les vrais "perte_poids_debutant", combien ai-je retrouvé ? Un rappel faible = beaucoup de cas manqués.</p>
+        <p>Le problème : on ne peut pas maximiser les deux en même temps. Si je dis "c'est perte_poids_debutant" pour tout le monde → rappel 100% mais précision catastrophique. Si je ne prédit ce profil que quand je suis sûr à 99% → précision 100% mais rappel très faible.</p>
+        <p>Le F1-score est la moyenne harmonique des deux — il pénalise les extrêmes et force un équilibre.</p>
+      </div>
+    </div>
+
+    <div class="qa-item">
+      <div class="qa-q">C'est quoi le train/test split et pourquoi 80/20 ?</div>
+      <div class="qa-a">
+        <p>On divise le dataset en deux parties : 80% pour entraîner le modèle (X_train), 20% gardés de côté pour l'évaluation finale (X_test). Le test set n'est jamais vu pendant l'entraînement — c'est la simulation de "données du futur".</p>
+        <p>Le ratio 80/20 est une convention empirique qui offre un bon compromis : assez de données pour entraîner, assez pour évaluer de façon représentative. Sur 2000 exemples → 1600 train, 400 test.</p>
+        <p>Le split est <strong>stratifié</strong> : chaque classe garde sa proportion. Sans ça, la classe rare (perte_poids_confirme à 7.4%) pourrait avoir trop peu d'exemples dans le test set pour une évaluation fiable.</p>
+      </div>
+    </div>
+
+    <div class="qa-item">
+      <div class="qa-q">C'est quoi un hyperparamètre ? Donnez des exemples concrets.</div>
+      <div class="qa-a">
+        <p>Un hyperparamètre est un réglage du modèle qu'on fixe <em>avant</em> l'entraînement — il n'est pas appris automatiquement à partir des données. C'est à nous de le choisir.</p>
+        <p>Pour Random Forest : <code>n_estimators</code> (combien d'arbres ?), <code>max_depth</code> (jusqu'où chaque arbre peut-il pousser ?), <code>min_samples_leaf</code> (nombre minimum d'exemples dans une feuille).</p>
+        <p>Pour XGBoost : <code>learning_rate</code> (à quelle vitesse chaque arbre corrige-t-il les erreurs du précédent ?), <code>max_depth</code>, <code>subsample</code> (quelle fraction des données chaque arbre voit-il ?).</p>
+        <p>Différence avec les paramètres appris : les poids des arbres, les seuils de coupure des nœuds — ça, c'est appris automatiquement par le modèle pendant le fit().</p>
+      </div>
+    </div>
+
+    <div class="qa-item">
+      <div class="qa-q">C'est quoi la régularisation et pourquoi XGBoost l'utilise ?</div>
+      <div class="qa-a">
+        <p>La régularisation est une pénalité ajoutée à la fonction de perte pour punir les modèles trop complexes. Elle force le modèle à rester simple et à ne pas mémoriser le bruit.</p>
+        <p>XGBoost ajoute deux types de régularisation : <strong>L1 (Lasso)</strong> qui pousse certains poids à exactement zéro (sélection de features implicite) et <strong>L2 (Ridge)</strong> qui pousse tous les poids vers zéro sans les annuler. sklearn GradientBoosting n'a pas ces régularisations explicites — c'est l'une des raisons pour lesquelles XGBoost généralise souvent mieux.</p>
+      </div>
+    </div>
+
+    <div class="qa-item">
+      <div class="qa-q">C'est quoi le StandardScaler et est-ce vraiment nécessaire pour Random Forest ?</div>
+      <div class="qa-a">
+        <p>Le StandardScaler centre et réduit chaque feature numérique : soustrait la moyenne, divise par l'écart-type. Résultat : toutes les features ont une moyenne de 0 et un écart-type de 1.</p>
+        <p>Pour les <strong>arbres de décision</strong> (Random Forest, XGBoost) : techniquement pas nécessaire — les arbres font des coupures binaires et sont insensibles à l'échelle des features. Un arbre qui dit "BMI &gt; 27.5" fonctionne pareil que si le BMI était normalisé.</p>
+        <p>On le garde quand même pour deux raisons : (1) bonne pratique et cohérence du pipeline, (2) si on décide plus tard d'essayer un SVM ou une régression logistique, le pipeline est prêt sans modification.</p>
+      </div>
+    </div>
+
+    <div class="qa-item">
+      <div class="qa-q">C'est quoi le LabelEncoder et pourquoi l'utiliser ?</div>
+      <div class="qa-a">
+        <p>Le LabelEncoder convertit les labels texte en entiers. "perte_poids_debutant" → 0, "prise_masse_confirme" → 1, etc. Les algorithmes ML ne peuvent pas travailler avec du texte directement — ils ont besoin de nombres.</p>
+        <p>On utilise le LabelEncoder sur la variable cible (y), pas sur les features. Pour les features catégorielles ordinales, on utilise l'OrdinalEncoder (qui respecte l'ordre). Pour les features nominales sans ordre, ce serait un OneHotEncoder.</p>
+        <p>Le LabelEncoder est fitté sur y_train et appliqué sur y_test — même précaution que le StandardScaler pour éviter le leakage.</p>
+      </div>
+    </div>
+
+    <div class="qa-item">
+      <div class="qa-q">Pourquoi Random Forest et pas juste un seul arbre de décision ?</div>
+      <div class="qa-a">
+        <p>Un seul arbre de décision profond mémorise les données d'entraînement — il suit chaque bruit, chaque cas particulier. Son accuracy sur le train peut être 100% mais il généralise très mal.</p>
+        <p>Random Forest construit des centaines d'arbres différents (en variant les données et les features vues par chaque arbre) puis fait voter la majorité. Les erreurs individuelles de chaque arbre s'annulent — c'est le principe de la sagesse des foules. Le résultat est beaucoup plus robuste et stable qu'un seul arbre, même imparfait.</p>
+        <p>C'est le concept de <strong>bagging</strong> (Bootstrap AGGregating) : diversifier pour stabiliser.</p>
+      </div>
+    </div>
+
+    <div class="qa-item">
+      <div class="qa-q">Quelle est la différence entre Random Forest et XGBoost ?</div>
+      <div class="qa-a">
+        <p><strong>Random Forest (bagging) :</strong> construit les arbres en <em>parallèle</em> et indépendamment. Chaque arbre est entraîné sur un sous-ensemble aléatoire des données. La prédiction finale = vote de majorité. Rapide à entraîner (parallélisable), robuste, peu d'hyperparamètres critiques.</p>
+        <p><strong>XGBoost (boosting) :</strong> construit les arbres <em>séquentiellement</em>. Chaque nouvel arbre corrige les erreurs du précédent en se concentrant sur les exemples mal classés. Plus lent à entraîner (séquentiel), plus puissant sur des données complexes, plus sensible aux hyperparamètres.</p>
+        <p>Sur notre dataset, les deux sont très proches (0.3 point d'écart) — signe que le problème est bien formulé et que les features font le travail.</p>
+      </div>
+    </div>
+
+    <h3 style="margin-top:40px">Choix techniques du projet</h3>
+
+    <div class="qa-item">
+      <div class="qa-q">Pourquoi FastAPI et pas Flask ou Django ?</div>
+      <div class="qa-a">
+        <p><strong>Flask :</strong> plus simple mais ne génère pas de documentation automatique et n'a pas de validation native des entrées. Il faudrait coder la validation à la main.</p>
+        <p><strong>Django :</strong> framework complet avec ORM, admin, templates — beaucoup trop lourd pour une API ML simple. Django est conçu pour des applications web complètes.</p>
+        <p><strong>FastAPI :</strong> conçu spécifiquement pour les APIs. Génère automatiquement la documentation Swagger UI interactive, valide les entrées via Pydantic (erreurs claires si un champ est manquant ou mal typé), supporte l'async nativement, et est l'un des frameworks Python les plus rapides. C'est le standard actuel pour les APIs ML en production.</p>
+      </div>
+    </div>
+
+    <div class="qa-item">
+      <div class="qa-q">C'est quoi Pydantic et à quoi ça sert ?</div>
+      <div class="qa-a">
+        <p>Pydantic est une librairie de validation de données Python. On définit des modèles de données (classes avec types annotés) et Pydantic valide automatiquement que les données reçues correspondent au schéma attendu.</p>
+        <p>Exemple : si l'API reçoit un âge de -5 ou une chaîne "abc" à la place d'un entier, Pydantic rejette la requête avec un message d'erreur clair avant même que le code ML s'exécute. C'est la validation à la frontière du système — exactement là où elle doit être.</p>
+        <p>FastAPI utilise Pydantic pour générer aussi la documentation Swagger automatiquement à partir des mêmes schémas.</p>
+      </div>
+    </div>
+
+    <div class="qa-item">
+      <div class="qa-q">Pourquoi Railway pour le déploiement ?</div>
+      <div class="qa-a">
+        <p>Railway est une plateforme de déploiement cloud (PaaS — Platform as a Service) qui simplifie le déploiement d'applications Python. On connecte le repo GitHub et Railway déploie automatiquement à chaque push.</p>
+        <p>Avantages par rapport aux alternatives : pas de configuration serveur, PostgreSQL intégré avec connexion directe, variables d'environnement gérées dans l'interface, logs en temps réel. Gratuit jusqu'à un certain seuil d'utilisation.</p>
+        <p>Alternative envisageable : Heroku (même concept, plus cher), AWS/GCP/Azure (beaucoup plus puissant mais complexité infiniment supérieure).</p>
+      </div>
+    </div>
+
+    <div class="qa-item">
+      <div class="qa-q">Pourquoi PostgreSQL et pas MySQL ou SQLite ?</div>
+      <div class="qa-a">
+        <p><strong>SQLite :</strong> base de données fichier, parfaite pour le développement local (MLflow l'utilise). Pas adaptée à la production multi-utilisateurs — un seul écrivain à la fois, pas de gestion des connexions concurrentes.</p>
+        <p><strong>MySQL :</strong> très répandu, bon pour les applications web traditionnelles. Moins de fonctionnalités avancées que PostgreSQL (types de données, opérateurs tableau comme <code>&amp;&amp;</code> qu'on utilise pour les allergènes).</p>
+        <p><strong>PostgreSQL :</strong> le plus avancé des SGBD open source. Supporte les tableaux natifs (<code>text[]</code>) qu'on utilise pour stocker les allergènes et les profils dans <code>meals</code>. C'est le choix par défaut sur Railway et le standard en production Python.</p>
+      </div>
+    </div>
+
+    <div class="qa-item">
+      <div class="qa-q">C'est quoi un schéma PostgreSQL et pourquoi "Data" ?</div>
+      <div class="qa-a">
+        <p>Un schéma PostgreSQL est un espace de noms qui regroupe des tables. C'est comme un dossier dans un système de fichiers — plusieurs tables avec le même nom peuvent coexister dans des schémas différents.</p>
+        <p>Par défaut, PostgreSQL crée tout dans le schéma <code>public</code>. On a déplacé toutes nos tables dans le schéma <code>"Data"</code> pour les isoler des tables système et garder une organisation propre. Chaque connexion doit préciser <code>SET search_path TO "Data"</code> pour accéder aux tables.</p>
+      </div>
+    </div>
+
+    <div class="qa-item">
+      <div class="qa-q">Pourquoi CORS est-il configuré dans l'API ?</div>
+      <div class="qa-a">
+        <p>CORS (Cross-Origin Resource Sharing) est une politique de sécurité des navigateurs qui bloque par défaut les requêtes HTTP vers un domaine différent de celui de la page web. Si une page sur <code>monsite.com</code> appelle l'API sur <code>api.railway.app</code>, le navigateur bloque la requête.</p>
+        <p>Le middleware CORS de FastAPI ajoute les headers HTTP nécessaires pour autoriser ces requêtes cross-origin. On a configuré <code>allow_origins=["*"]</code> pour autoriser tous les domaines — acceptable pour un projet de démonstration, mais en production on restreindrait aux domaines connus.</p>
+      </div>
+    </div>
+
+    <div class="qa-item">
+      <div class="qa-q">C'est quoi le pattern Singleton et pourquoi l'utiliser pour le service ML ?</div>
+      <div class="qa-a">
+        <p>Le pattern Singleton garantit qu'une classe n'a qu'une seule instance dans tout le programme. On l'implémente via la méthode <code>__new__</code> de Python : si l'instance existe déjà, on la retourne ; sinon on la crée.</p>
+        <p>Pour le service ML : charger un modèle joblib depuis le disque prend ~200ms. Sans Singleton, chaque requête API créerait une nouvelle instance du service et rechargerait le modèle — 200ms de latence par requête, inacceptable. Avec Singleton, le modèle est chargé une seule fois au démarrage et toutes les requêtes partagent la même instance en mémoire.</p>
+      </div>
+    </div>
+
+    <div class="qa-item">
+      <div class="qa-q">Pourquoi utiliser un UUID comme prediction_id ?</div>
+      <div class="qa-a">
+        <p>Un UUID (Universally Unique Identifier) est un identifiant de 128 bits généré aléatoirement. La probabilité de collision (deux UUIDs identiques) est astronomiquement faible — on peut en générer des milliards sans risque de doublon.</p>
+        <p>Alternatives : un simple auto-incrément (1, 2, 3…) serait prévisible — quelqu'un pourrait deviner les IDs des autres utilisateurs. L'UUID est opaque et non-devinable, ce qui protège la confidentialité des prédictions.</p>
+        <p>On génère l'UUID côté API (<code>uuid.uuid4()</code>) plutôt que côté base de données pour pouvoir le logguer dans Firebase et le retourner dans la réponse avant toute écriture en base.</p>
+      </div>
+    </div>
+
+    <h3 style="margin-top:40px">Questions pièges & défense</h3>
+
+    <div class="qa-item">
+      <div class="qa-q">Votre modèle est-il biaisé ?</div>
+      <div class="qa-a">
+        <p>Tout modèle a des biais. Les nôtres sont connus et documentés.</p>
+        <p><strong>Biais de population :</strong> les distributions sont calées sur NHANES 2017-2018 (population américaine adulte 18-65 ans). Le modèle pourrait mal généraliser sur des populations différentes (population asiatique avec des seuils IMC différents, seniors &gt; 65 ans, enfants, femmes enceintes).</p>
+        <p><strong>Biais de label :</strong> les règles de labeling ACSM sont des guidelines générales — elles ne s'appliquent pas à des cas médicaux particuliers (personnes sous traitement, maladies chroniques, limitations physiques non déclarées).</p>
+        <p><strong>Biais de genre binaire :</strong> le modèle encode le genre en binaire 0/1. Il ne gère pas les personnes non-binaires ou les personnes trans dont la physiologie peut différer des normes utilisées.</p>
+        <p>Ces biais sont reconnus. Le système est un outil d'aide, pas un substitut à une consultation médicale professionnelle.</p>
+      </div>
+    </div>
+
+    <div class="qa-item">
+      <div class="qa-q">Vos données sont synthétiques — est-ce que ça ne rend pas vos résultats artificiellement bons ?</div>
+      <div class="qa-a">
+        <p>C'est la question la plus légitime. La réponse honnête : oui, partiellement.</p>
+        <p>Le modèle a appris sur des données générées par des règles, et est évalué sur des données générées par les mêmes règles (avec du bruit). Il est donc probable qu'il surperforme sur ces données par rapport à de vraies données réelles.</p>
+        <p>Deux arguments atténuants : (1) le bruit de 12% et les distributions réalistes empêchent un apprentissage parfait des règles — sinon le F1 serait 100% et non 86%. (2) Les corrélations physiologiques reproduites sont réelles — le modèle apprend des patterns qui existent dans la biologie humaine.</p>
+        <p>La validation sur données réelles est explicitement identifiée comme la prochaine étape nécessaire avant tout déploiement réel.</p>
+      </div>
+    </div>
+
+    <div class="qa-item">
+      <div class="qa-q">Pourquoi ne pas avoir utilisé un réseau de neurones ?</div>
+      <div class="qa-a">
+        <p>Pour des données tabulaires structurées avec 2000 exemples et 15 features, les réseaux de neurones sont rarement le meilleur choix.</p>
+        <p>Les réseaux de neurones excellent sur des données non structurées (images, texte, audio) où les features sont brutes et nécessitent un apprentissage de représentation. Sur des données tabulaires bien structurées, XGBoost et Random Forest les surpassent généralement avec beaucoup moins de données et d'hyperparamètres à régler.</p>
+        <p>De plus, l'interprétabilité (feature importance, SHAP) est naturelle pour les arbres — beaucoup plus complexe pour les réseaux de neurones. Pour un domaine médical, l'explicabilité est une exigence, pas un bonus.</p>
+      </div>
+    </div>
+
+    <div class="qa-item">
+      <div class="qa-q">Comment vous assurer que l'API ne plante pas en production ?</div>
+      <div class="qa-a">
+        <p>Plusieurs mécanismes sont en place : (1) <strong>Validation Pydantic</strong> — toute entrée malformée est rejetée avant d'atteindre le modèle ML avec un message d'erreur HTTP 422. (2) <strong>Try/except</strong> sur les appels Firebase — si Firebase est indisponible, la prédiction ML continue et retourne un résultat, le log Firebase est simplement ignoré avec un warning. (3) <strong>Route /health</strong> — permet de vérifier que l'API répond sans charger de données. (4) Le modèle est chargé en mémoire au démarrage — pas de dépendance disque à chaque requête.</p>
+        <p>Ce qui pourrait planter : une déconnexion PostgreSQL pendant une requête /nutrition/meals ou /sessions/exercises. Amélioration possible : connection pooling avec retry automatique.</p>
+      </div>
+    </div>
+
+    <div class="qa-item">
+      <div class="qa-q">Votre modèle peut-il être mis à jour sans couper l'API ?</div>
+      <div class="qa-a">
+        <p>Dans l'état actuel, non — mettre à jour le modèle nécessite de remplacer le fichier <code>model.pkl</code> et de redémarrer l'API (Railway le fait automatiquement à chaque push Git).</p>
+        <p>En production industrielle, on utiliserait le <strong>blue/green deployment</strong> : on lance une nouvelle version de l'API en parallèle, on bascule le trafic progressivement, et on coupe l'ancienne version seulement quand la nouvelle est validée. Railway supporte ce pattern via les environnements de staging.</p>
+        <p>MLflow permet de versionner les modèles et de garder les anciens disponibles — on pourrait implémenter un endpoint <code>/model/reload</code> qui recharge le modèle depuis MLflow sans redémarrer le serveur.</p>
+      </div>
+    </div>
+
+    <div class="qa-item">
+      <div class="qa-q">Quelles données personnelles collectez-vous et comment les protégez-vous ?</div>
+      <div class="qa-a">
+        <p>L'API collecte des données biométriques (âge, genre, poids, taille, masse grasse, BPM, expérience) qui sont des données de santé au sens du RGPD — catégorie sensible nécessitant un niveau de protection renforcé.</p>
+        <p>Mesures en place : (1) les données sont transmises via HTTPS (chiffrement en transit), (2) elles sont stockées dans Firebase Firestore avec authentification OAuth2, (3) aucun nom ou identifiant personnel n'est collecté — seulement les mesures biométriques anonymisées, (4) le <code>prediction_id</code> est un UUID aléatoire non-réversible.</p>
+        <p>Améliorations nécessaires avant un déploiement réel : politique de rétention des données, droit à l'oubli (suppression des documents Firebase sur demande), DPO désigné si traitement à grande échelle.</p>
+      </div>
+    </div>
+
+    <div class="qa-item">
+      <div class="qa-q">Comment savez-vous que votre feature engineering améliore vraiment les performances ?</div>
+      <div class="qa-a">
+        <p>On peut le mesurer directement : entraîner le même modèle avec les 8 features brutes uniquement, puis avec les 15 features (8 brutes + 7 engineered), et comparer les F1-macro.</p>
+        <p>Indicateurs indirects dans notre projet : (1) <code>bmi_x_exp</code> et <code>fitness_score</code> apparaissent systématiquement dans le top 5 des feature importances — si elles n'apportaient rien, le modèle ne les utiliserait pas. (2) Les 3 modèles comparés donnent tous des F1 similaires (~0.85–0.86), ce qui suggère que le signal dans les features est fort et non dépendant de l'algorithme.</p>
+        <p>Ce qu'on aurait pu faire : ablation study — retirer une feature à la fois et mesurer l'impact sur les performances. C'est une approche rigoureuse pour valider chaque feature individuellement.</p>
+      </div>
+    </div>
+
+    <div class="qa-item">
+      <div class="qa-q">86% de F1-macro, c'est bon ou pas ?</div>
+      <div class="qa-a">
+        <p>Il n'y a pas de réponse universelle — ça dépend du contexte.</p>
+        <p><strong>Points de comparaison :</strong> un classifieur aléatoire sur 6 classes équilibrées donnerait ~17%. Un classifieur qui prédit toujours la classe majoritaire donnerait ~25% de F1-macro. On est donc très largement au-dessus du hasard.</p>
+        <p><strong>Dans notre contexte :</strong> 86% sur 6 classes de profils fitness synthétiques avec 15% d'ambiguïté intrinsèque (bruit 12% + frontière BPM floue), c'est une très bonne performance. La limite n'est pas l'algorithme — c'est l'ambiguïté du problème lui-même.</p>
+        <p><strong>Ce qui compte plus que le chiffre absolu :</strong> la stabilité (±0.8% sur 5 folds), l'absence d'overfitting (learning curves convergentes), et la cohérence métier (pas de confusion perte/prise de masse).</p>
+      </div>
+    </div>
+
+    <div class="qa-item">
+      <div class="qa-q">Auriez-vous pu obtenir de meilleures performances ?</div>
+      <div class="qa-a">
+        <p>Probablement oui, mais avec des rendements décroissants.</p>
+        <p><strong>Pistes explorables :</strong> (1) augmenter la taille du dataset (3000 ou 5000 individus) pour les classes minoritaires, (2) réduire le bruit de 12% à 8% pour les frontières les plus claires, (3) ajouter des features (VO2max, variabilité de la fréquence cardiaque) pour amelioration_cardio, (4) ensemble stacking — combiner Random Forest et XGBoost via un méta-modèle.</p>
+        <p><strong>Pourquoi on s'est arrêté là :</strong> au-delà de 86–87%, les gains marginaux deviennent très faibles et le risque d'overfitting augmente. La limite vient de l'ambiguïté intrinsèque des données (le bruit de 12% impose un plafond théorique ~88%), pas du modèle.</p>
+      </div>
+    </div>
+
+    <div class="qa-item">
+      <div class="qa-q">Pourquoi avoir gardé 3 profils en top_profiles dans /recommend ?</div>
+      <div class="qa-a">
+        <p>Le modèle ne fait pas une prédiction binaire certaine — il calcule une probabilité pour chacun des 6 profils (<code>predict_proba()</code>). La somme de ces 6 probabilités = 100%.</p>
+        <p>Retourner uniquement le profil le plus probable cache de l'information utile. Si le modèle dit "perte_poids_debutant à 52% et amelioration_cardio à 41%", c'est un cas limite — l'utilisateur devrait le savoir et avoir son mot à dire.</p>
+        <p>Le top 3 est un équilibre : assez d'information pour une décision éclairée, pas trop pour ne pas noyer l'utilisateur. C'est aussi ce qui alimente la route <code>/logs/feedback</code> — l'utilisateur choisit parmi les options proposées.</p>
+      </div>
+    </div>
+
   </section>
 
   <!-- LIMITS -->
@@ -1696,22 +1512,23 @@ prise_masse_debutant       0.94      1.00      0.97        59
     <div class="card">
       <h4>Limites actuelles</h4>
       <ul>
-        <li><strong>Validation externe absente :</strong> le modèle n'a pas été testé sur un vrai dataset de membres de salle de sport. C'est l'étape de validation manquante avant tout déploiement réel.</li>
-        <li><strong>Features absentes mais importantes :</strong> pathologies chroniques, médicaments, blessures passées, qualité du sommeil, niveau de stress — des informations qui influencent fortement les prescriptions sportives en cabinet médical.</li>
-        <li><strong>Système statique :</strong> le modèle fait une recommandation ponctuelle à l'inscription. Un système idéal s'adapterait en temps réel aux progrès de l'utilisateur (suivi des séances, évolution du poids, BPM après 4 semaines).</li>
-        <li><strong>Biais de population :</strong> les distributions simulées sont calées sur la population américaine de NHANES 2017-2018. Elles peuvent différer significativement d'autres populations (européenne, asiatique…).</li>
+        <li><strong>Validation externe absente :</strong> le modèle n'a pas été testé sur un vrai dataset de membres. C'est l'étape manquante avant tout déploiement réel.</li>
+        <li><strong>Features absentes mais importantes :</strong> pathologies chroniques, médicaments, blessures passées, qualité du sommeil, niveau de stress.</li>
+        <li><strong>Système statique :</strong> recommandation ponctuelle à l'inscription. Un système idéal s'adapterait en temps réel aux progrès (poids après 4 semaines, BPM mesuré après 8 semaines).</li>
+        <li><strong>Biais de population :</strong> distributions calées sur NHANES 2017-2018 (population américaine). Peut différer d'autres populations.</li>
+        <li><strong>amelioration_cardio :</strong> F1 de 0.62 — limite inhérente à la frontière BPM floue. Amélioration nécessiterait des features cardio-vasculaires supplémentaires.</li>
       </ul>
     </div>
 
     <div class="card">
       <h4>Perspectives d'amélioration</h4>
       <ul>
-        <li>Collecte de données réelles via partenariat (salle de sport, application fitness) pour la validation externe</li>
-        <li>Ajout d'un modèle de feedback : le programme est-il suivi ? Avec quels résultats mesurés à 8 semaines ?</li>
-        <li>Interprétabilité SHAP : valeurs de Shapley par prédiction individuelle — expliquer à l'utilisateur pourquoi tel programme lui est recommandé</li>
-        <li>API de monitoring du data drift : détecter si les distributions des nouvelles données s'éloignent du dataset d'entraînement</li>
-        <li>Interface utilisateur front-end connectée à l'API pour une démonstration complète</li>
-        <li>Exploration de modèles de deep learning (TabNet, SAINT) pour voir si une architecture plus complexe améliore le cas difficile de <code>amelioration_cardio</code></li>
+        <li>Collecte de données réelles via partenariat (salle de sport, app fitness) pour validation externe</li>
+        <li>Ré-entraînement sur données réelles via la boucle <code>/logs/feedback</code> — une fois suffisamment d'utilisateurs inscrits</li>
+        <li>Interprétabilité SHAP : expliquer à l'utilisateur <em>pourquoi</em> tel programme lui est recommandé</li>
+        <li>Monitoring du data drift : détecter si les nouvelles données s'éloignent du dataset d'entraînement</li>
+        <li>Suivi longitudinal : adapter le programme selon les progrès mesurés à 4, 8, 12 semaines</li>
+        <li>Exploration de modèles de deep learning (TabNet) pour améliorer <code>amelioration_cardio</code></li>
       </ul>
     </div>
   </section>

@@ -205,7 +205,7 @@ def train_and_evaluate(X_train, X_test, y_train, y_test, label_encoder):
 
             cv_scores = cross_val_score(best_model, X_train, y_train,
                                         cv=cv, scoring="f1_macro", n_jobs=-1)
-    
+
             print(f"  Best params : {search.best_params_}")
             print(f"  Accuracy    : {acc:.4f}")
             print(f"  F1-macro    : {f1_mac:.4f}")
